@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
+import { computed, ref } from 'vue';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useBorrowCart } from '@/composables/useBorrowCart';
 import type { Availability } from '@/types';
 
 type Asset = {
@@ -48,6 +50,27 @@ const form = useForm({
     description: '',
 });
 
+const { count: cartCount, add: pushCartLine } = useBorrowCart();
+const quantity = ref(1);
+const roles = computed(
+    () =>
+        (usePage().props.auth?.user as { roles?: string[] } | null)?.roles ??
+        [],
+);
+const canBorrow = computed(
+    () => roles.value.includes('user') && props.item.status === 'active',
+);
+
+function addToCart(): void {
+    pushCartLine({
+        item_id: props.item.id,
+        code: props.item.code,
+        name: props.item.name,
+        quantity: Math.max(1, quantity.value),
+        tracking_method: props.item.tracking_method,
+    });
+}
+
 function report(): void {
     form.post(`/admin/inventory/items/${props.item.id}/damage-reports`, {
         preserveScroll: true,
@@ -79,6 +102,31 @@ const statusLabel: Record<string, string> = {
             </div>
             <Button variant="outline" as-child>
                 <Link href="/inventory">Kembali</Link>
+            </Button>
+        </div>
+
+        <div
+            v-if="canBorrow"
+            class="flex flex-wrap items-end gap-3 rounded-lg border p-4"
+        >
+            <div class="grid gap-2">
+                <Label for="borrow_quantity">Jumlah pinjam</Label>
+                <Input
+                    id="borrow_quantity"
+                    v-model.number="quantity"
+                    type="number"
+                    class="w-28"
+                    min="1"
+                    :max="availability.available"
+                />
+            </div>
+            <Button :disabled="availability.available < 1" @click="addToCart">
+                Tambah ke keranjang
+            </Button>
+            <Button variant="outline" as-child>
+                <Link href="/peminjaman/baru">
+                    Keranjang ({{ cartCount }})
+                </Link>
             </Button>
         </div>
 

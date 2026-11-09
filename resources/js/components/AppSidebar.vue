@@ -4,6 +4,8 @@ import {
     BookOpen,
     Boxes,
     Building2,
+    ClipboardCheck,
+    ClipboardList,
     FolderGit2,
     LayoutGrid,
     MapPin,
@@ -49,6 +51,15 @@ const mainNavItems: NavItem[] = [
         href: '/inventory',
         icon: Package,
     },
+    {
+        title: 'Peminjaman Saya',
+        href: '/peminjaman',
+        icon: ClipboardList,
+    },
+];
+
+const approvalNavItems: NavItem[] = [
+    { title: 'Approval', href: '/admin/approval', icon: ClipboardCheck },
 ];
 
 const adminNavItems: NavItem[] = [
@@ -100,6 +111,11 @@ const footerNavItems: NavItem[] = [
 
         <SidebarContent>
             <NavMain :items="mainNavItems" />
+            <NavMain
+                v-if="isAdmin || isWm"
+                :items="approvalNavItems"
+                label="Persetujuan"
+            />
             <NavMain v-if="isAdmin" :items="adminNavItems" label="Inventaris" />
             <NavMain v-if="isWm" :items="wmNavItems" label="Manajemen" />
         </SidebarContent>

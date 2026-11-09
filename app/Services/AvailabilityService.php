@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Item;
+use Carbon\CarbonInterface;
 
 class AvailabilityService
 {
@@ -66,5 +67,34 @@ class AvailabilityService
         }
 
         return $this->summary($item)['available'] >= $quantity;
+    }
+
+    /**
+     * Units free for the given period, ignoring today's physical status where possible.
+     */
+    public function availableForPeriod(Item $item, CarbonInterface $start, CarbonInterface $end): int
+    {
+        if ($item->status !== 'active') {
+            return 0;
+        }
+
+        if ($item->tracking_method === 'serialized') {
+            // ponytail: borrowed units have no due date until Sprint 5 loans exist, so they stay unavailable.
+            return $item->assets()
+                ->whereNotIn('status', ['borrowed', 'damaged', 'maintenance', 'lost', 'inactive'])
+                ->whereDoesntHave('reservations', fn ($query) => $query
+                    ->where('status', 'active')
+                    ->where('start_at', '<', $end)
+                    ->where('end_at', '>', $start))
+                ->count();
+        }
+
+        $reserved = (int) $item->reservations()
+            ->where('status', 'active')
+            ->where('start_at', '<', $end)
+            ->where('end_at', '>', $start)
+            ->sum('quantity');
+
+        return max(0, (int) $item->quantity_total - $this->blockedQuantity($item) - $reserved);
     }
 }

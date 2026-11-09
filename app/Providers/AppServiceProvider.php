@@ -26,6 +26,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Gate::define('manage-inventory', fn (User $user): bool => $user->hasRole('admin_korlab'));
+        Gate::define('approve-borrow-request', fn (User $user): bool => $user->hasAnyRole(['admin_korlab', 'wm']));
 
         $this->configureDefaults();
     }

@@ -3,8 +3,12 @@
 namespace Tests\Unit;
 
 use App\Models\Asset;
+use App\Models\BorrowRequest;
 use App\Models\DamageReport;
 use App\Models\Item;
+use App\Models\Member;
+use App\Models\Reservation;
+use App\Models\User;
 use App\Services\AvailabilityService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -62,5 +66,55 @@ class AvailabilityServiceTest extends TestCase
 
         $this->assertTrue($service->isAvailable($item, 1));
         $this->assertFalse($service->isAvailable($item, 2));
+    }
+
+    public function test_quantity_availability_for_period_subtracts_overlapping_reservations(): void
+    {
+        $item = Item::factory()->quantity()->create(['quantity_total' => 5]);
+        $this->reserve($item, quantity: 2, start: now()->addDays(3), end: now()->addDays(5));
+
+        $service = app(AvailabilityService::class);
+
+        $this->assertSame(3, $service->availableForPeriod($item, now()->addDays(3), now()->addDays(5)));
+        $this->assertSame(5, $service->availableForPeriod($item, now()->addDays(10), now()->addDays(12)));
+    }
+
+    public function test_serialized_availability_for_period_skips_reserved_units(): void
+    {
+        $item = Item::factory()->create();
+        $first = Asset::factory()->for($item)->create(['status' => 'available']);
+        Asset::factory()->for($item)->create(['status' => 'available']);
+
+        $this->reserve($item, quantity: 1, start: now()->addDays(3), end: now()->addDays(5), asset: $first);
+
+        $service = app(AvailabilityService::class);
+
+        $this->assertSame(1, $service->availableForPeriod($item, now()->addDays(3), now()->addDays(5)));
+        $this->assertSame(2, $service->availableForPeriod($item, now()->addDays(10), now()->addDays(12)));
+    }
+
+    private function reserve(
+        Item $item,
+        int $quantity,
+        \DateTimeInterface $start,
+        \DateTimeInterface $end,
+        ?Asset $asset = null,
+    ): void {
+        $member = Member::factory()->create();
+        $request = BorrowRequest::factory()->create([
+            'member_id' => $member->id,
+            'created_by_user_id' => User::factory()->create(['member_id' => $member->id])->id,
+        ]);
+        $line = $request->items()->create(['item_id' => $item->id, 'quantity' => $quantity]);
+
+        Reservation::factory()->create([
+            'borrow_request_id' => $request->id,
+            'borrow_request_item_id' => $line->id,
+            'item_id' => $item->id,
+            'asset_id' => $asset?->id,
+            'quantity' => $asset ? 1 : $quantity,
+            'start_at' => $start,
+            'end_at' => $end,
+        ]);
     }
 }

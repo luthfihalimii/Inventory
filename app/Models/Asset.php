@@ -34,4 +34,10 @@ class Asset extends Model
     {
         return $this->hasMany(DamageReport::class);
     }
+
+    /** @return HasMany<Reservation, $this> */
+    public function reservations(): HasMany
+    {
+        return $this->hasMany(Reservation::class);
+    }
 }

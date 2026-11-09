@@ -59,4 +59,16 @@ class Item extends Model
     {
         return $this->hasMany(DamageReport::class);
     }
+
+    /** @return HasMany<Reservation, $this> */
+    public function reservations(): HasMany
+    {
+        return $this->hasMany(Reservation::class);
+    }
+
+    /** @return HasMany<BorrowRequestItem, $this> */
+    public function borrowRequestItems(): HasMany
+    {
+        return $this->hasMany(BorrowRequestItem::class);
+    }
 }
