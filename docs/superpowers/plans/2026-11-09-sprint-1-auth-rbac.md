@@ -31,59 +31,70 @@
 
 **Files:** migration `audit_logs`, `app/Models/AuditLog.php`, `app/Services/AuditLogger.php`, update login flow.
 
-- [ ] Migration: append-only columns, index `(entity_type, entity_id, created_at)` dan `(actor_user_id, created_at)`.
-- [ ] Model: `$timestamps = false`, `created_at` only, update/delete diblokir.
-- [ ] `AuditLogger::record(action, subject, context)` menulis aktor, role, IP, user agent.
-- [ ] Login sukses/gagal tercatat.
-- [ ] Test: entri tertulis; update/delete melempar exception.
+- [x] Migration: append-only columns, index `(entity_type, entity_id, created_at)` dan `(actor_user_id, created_at)`.
+- [x] Model: `$timestamps = false`, `created_at` only, update/delete diblokir.
+- [x] `AuditLogger::record(action, subject, context)` menulis aktor, role, IP, user agent.
+- [x] Login sukses/gagal tercatat.
+- [x] Test: entri tertulis; update/delete melempar exception.
 
 ### Task 2: Role + Policy + dashboard
 
 **Files:** `EnsureRole` middleware, `MemberPolicy`, `UserPolicy`, `DashboardController`, sidebar.
 
-- [ ] `User::hasRole()` / `hasAnyRole()`.
-- [ ] Middleware alias `role` → 403 untuk role salah.
-- [ ] Policy dasar `manage` untuk WM.
-- [ ] Dashboard mengirim ringkasan + role; sidebar menampilkan menu WM hanya untuk WM.
-- [ ] Test: user biasa 403 di route WM; WM 200.
+- [x] `User::hasRole()` / `hasAnyRole()`.
+- [x] Middleware alias `role` → 403 untuk role salah.
+- [x] Policy dasar `manage` untuk WM.
+- [x] Dashboard mengirim ringkasan + role; sidebar menampilkan menu WM hanya untuk WM.
+- [x] Test: user biasa 403 di route WM; WM 200.
 
 ### Task 3: Ganti password awal
 
 **Files:** `EnsurePasswordChanged` middleware, `PasswordChangeController`, `Pages/Auth/ChangePassword.vue`.
 
-- [ ] User dengan `must_change_password` diarahkan ke halaman ganti password di semua route kecuali ganti password dan logout.
-- [ ] Update password butuh password saat ini, menghapus flag, mencatat audit.
-- [ ] Test: redirect, loop tidak terjadi, flag hilang setelah ganti.
+- [x] User dengan `must_change_password` diarahkan ke halaman ganti password di semua route kecuali ganti password dan logout.
+- [x] Update password butuh password saat ini, menghapus flag, mencatat audit.
+- [x] Test: redirect, loop tidak terjadi, flag hilang setelah ganti.
 
 ### Task 4: Anggota + divisi
 
 **Files:** `Wm/MemberController`, `Wm/DivisionController`, pages.
 
-- [ ] Anggota: list + filter, create, update (termasuk status).
-- [ ] Divisi: list, create, update.
-- [ ] NRP unik divalidasi di FormRequest.
-- [ ] Tidak ada route delete.
-- [ ] Test: CRUD, validasi unik, non-WM 403, audit tercatat.
+- [x] Anggota: list + filter, create, update (termasuk status).
+- [x] Divisi: list, create, update.
+- [x] NRP unik divalidasi di FormRequest.
+- [x] Tidak ada route delete.
+- [x] Test: CRUD, validasi unik, non-WM 403, audit tercatat.
 
 ### Task 5: Akun + role
 
 **Files:** `Wm/AccountController`, pages.
 
-- [ ] Buat akun (username, member, role, password awal) dengan `must_change_password = true`.
-- [ ] Update role (sync), reset password, aktif/nonaktif.
-- [ ] Guard: tidak bisa menonaktifkan diri sendiri; tidak bisa mencabut role WM terakhir.
-- [ ] Auditor mencatat perubahan role dan status.
-- [ ] Test: create/update/reset, guard self, guard WM terakhir.
+- [x] Buat akun (username, member, role, password awal) dengan `must_change_password = true`.
+- [x] Update role (sync), reset password, aktif/nonaktif.
+- [x] Guard: tidak bisa menonaktifkan diri sendiri; tidak bisa mencabut role WM terakhir.
+- [x] Auditor mencatat perubahan role dan status.
+- [x] Test: create/update/reset, guard self, guard WM terakhir.
 
 ### Task 6: Halaman audit + UI
 
-- [ ] `Wm/AuditLogController` + halaman list (paginate 20, filter aksi).
-- [ ] Sidebar role-aware: Anggota, Divisi, Akun, Audit untuk WM.
-- [ ] Dashboard ringkas per role.
+- [x] `Wm/AuditLogController` + halaman list (paginate 20, filter aksi).
+- [x] Sidebar role-aware: Anggota, Divisi, Akun, Audit untuk WM.
+- [x] Dashboard ringkas per role.
 
 ### Task 7: Verifikasi
 
-- [ ] `php artisan migrate:fresh --seed`
-- [ ] `php artisan test`
-- [ ] `composer lint:check`, `composer types:check`
-- [ ] `bun run check`, `bun run types:check`, `bun run build`
+- [x] `php artisan migrate:fresh --seed`
+- [x] `php artisan test`
+- [x] `composer lint:check`, `composer types:check`
+- [x] `bun run check`, `bun run types:check`, `bun run build`
+
+## Status (2026-11-09)
+
+Selesai dan di-commit: `20a4002` (Sprint 1) + `582c9d6` (perbaikan hasil review).
+
+Catatan penyimpangan:
+
+- Dashboard masih placeholder; ringkasan per role belum dibuat.
+- Audit log append-only dijaga di level DB (trigger `audit_logs_append_only`) sebagai tambahan guard model.
+- Akun `inactive` dicabut sesinya lewat middleware `EnsureAccountActive`, plus hapus baris `sessions` dan `remember_token` saat dinonaktifkan.
+- Username akun baru dinormalisasi ke huruf kecil.
