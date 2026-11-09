@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Wm\AccountController;
 use App\Http\Controllers\Wm\AuditLogController;
+use App\Http\Controllers\Wm\BlockedMemberController;
 use App\Http\Controllers\Wm\DivisionController;
 use App\Http\Controllers\Wm\MemberController;
 use Illuminate\Support\Facades\Route;
@@ -20,6 +21,8 @@ Route::middleware(['auth', 'role:wm'])->prefix('wm')->name('wm.')->group(functio
     Route::put('accounts/{account}/roles', [AccountController::class, 'updateRole'])->name('accounts.roles.update');
     Route::put('accounts/{account}/password', [AccountController::class, 'updatePassword'])->name('accounts.password.update');
     Route::put('accounts/{account}/status', [AccountController::class, 'updateStatus'])->name('accounts.status.update');
+
+    Route::get('blocked', [BlockedMemberController::class, 'index'])->name('blocked.index');
 
     Route::get('audit', [AuditLogController::class, 'index'])->name('audit.index');
 });

@@ -9,6 +9,7 @@ use App\Models\Item;
 use App\Models\LoanTransaction;
 use App\Models\Reservation;
 use App\Services\AuditLogger;
+use App\Services\NotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -173,6 +174,7 @@ class CheckoutController extends Controller
         StoreCheckoutRequest $request,
         LoanTransaction $loanTransaction,
         AuditLogger $audit,
+        NotificationService $notifications,
     ): RedirectResponse {
         $user = $request->user();
         $lines = $request->lines();
@@ -369,6 +371,14 @@ class CheckoutController extends Controller
                 ['status' => 'borrowed'],
             );
         });
+
+        $notifications->notifyMember(
+            $loanTransaction->member_id,
+            'loan.checked_out',
+            'Barang sudah diserahkan',
+            'Barang pinjaman sudah diserahkan. Simpan baik-baik dan kembalikan sebelum tenggat.',
+            ['loan_transaction_id' => $loanTransaction->id],
+        );
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Barang diserahkan.']);
 

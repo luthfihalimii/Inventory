@@ -43,4 +43,10 @@ class Member extends Model
     {
         return $this->hasMany(User::class);
     }
+
+    /** @return HasMany<MemberBorrowingBlock, $this> */
+    public function borrowingBlocks(): HasMany
+    {
+        return $this->hasMany(MemberBorrowingBlock::class);
+    }
 }

@@ -12,6 +12,8 @@ use App\Models\ReturnInspection;
 use App\Models\ReturnInspectionItem;
 use App\Models\ReturnRequest;
 use App\Services\AuditLogger;
+use App\Services\NotificationService;
+use App\Services\OverdueService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -96,12 +98,15 @@ class ReturnController extends Controller
         VerifyReturnRequest $request,
         ReturnRequest $returnRequest,
         AuditLogger $audit,
+        OverdueService $overdue,
+        NotificationService $notifications,
     ): RedirectResponse {
         $user = $request->user();
         $rows = $request->items();
         $notes = $request->notes();
 
-        DB::transaction(function () use ($rows, $notes, $user, $returnRequest, $audit): void {
+        /** @var array{0: int, 1: int} $notify */
+        $notify = DB::transaction(function () use ($rows, $notes, $user, $returnRequest, $audit, $overdue): array {
             $locked = ReturnRequest::whereKey($returnRequest->id)->lockForUpdate()->firstOrFail();
 
             if ($locked->status !== 'pending') {
@@ -185,6 +190,8 @@ class ReturnController extends Controller
             $locked->update(['status' => 'verified', 'verified_at' => now()]);
             $loan->update(['status' => 'completed', 'returned_at' => now(), 'completed_at' => now()]);
 
+            // §9.4: close the overdue block for this loan; eligible only when nothing else is open.
+            $overdue->releaseForLoan($loan, 'Transaksi selesai dan diverifikasi.');
             $audit->record(
                 'return.verified',
                 $locked,
@@ -207,7 +214,19 @@ class ReturnController extends Controller
                 ['status' => 'return_pending_verification'],
                 ['status' => 'completed'],
             );
+
+            return [$loan->member_id, $loan->id];
         });
+
+        [$memberId, $loanId] = $notify;
+
+        $notifications->notifyMember(
+            $memberId,
+            'return.verified',
+            'Pengembalian diverifikasi',
+            'Transaksi selesai. Jika tidak ada pinjaman terlambat lain, status peminjaman kembali normal.',
+            ['loan_transaction_id' => $loanId, 'return_request_id' => $returnRequest->id],
+        );
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Pengembalian diverifikasi.']);
 

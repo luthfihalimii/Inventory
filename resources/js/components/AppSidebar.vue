@@ -9,8 +9,10 @@ import {
     FolderGit2,
     LayoutGrid,
     MapPin,
+    Megaphone,
     Package,
     ScrollText,
+    ShieldAlert,
     Tag,
     Undo2,
     ScanLine,
@@ -76,10 +78,12 @@ const adminNavItems: NavItem[] = [
         href: '/admin/inventory/damage-reports',
         icon: Wrench,
     },
+    { title: 'Pengumuman', href: '/admin/announcements', icon: Megaphone },
 ];
 
 const wmNavItems: NavItem[] = [
     { title: 'Anggota', href: '/wm/members', icon: Users },
+    { title: 'Anggota terblokir', href: '/wm/blocked', icon: ShieldAlert },
     { title: 'Divisi', href: '/wm/divisions', icon: Building2 },
     { title: 'Akun', href: '/wm/accounts', icon: UsersRound },
     { title: 'Audit', href: '/wm/audit', icon: ScrollText },

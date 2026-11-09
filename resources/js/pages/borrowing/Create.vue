@@ -14,7 +14,12 @@ type Sop = {
     content: string;
 };
 
-const props = defineProps<{ sop: Sop }>();
+type Block = {
+    reference_no: string | null;
+    due_at: string | null;
+};
+
+const props = defineProps<{ sop: Sop; blocks: Block[] }>();
 
 defineOptions({
     layout: {
@@ -81,6 +86,28 @@ function cancel(): void {
             <h1 class="text-xl font-semibold">Pengajuan peminjaman</h1>
             <p class="text-sm text-muted-foreground">
                 Periksa barang, isi jadwal, lalu setujui SOP.
+            </p>
+        </div>
+
+        <div
+            v-if="props.blocks.length > 0"
+            class="rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm"
+        >
+            <p class="font-medium text-destructive">
+                Peminjaman diblokir karena pinjaman terlambat.
+            </p>
+            <ul class="mt-1 list-disc pl-5 text-muted-foreground">
+                <li v-for="(block, index) in props.blocks" :key="index">
+                    {{ block.reference_no ?? 'Transaksi' }} — tenggat
+                    {{
+                        block.due_at
+                            ? new Date(block.due_at).toLocaleDateString('id-ID')
+                            : '-'
+                    }}
+                </li>
+            </ul>
+            <p class="mt-1 text-muted-foreground">
+                Kembalikan barang dan tunggu verifikasi untuk membuka blokir.
             </p>
         </div>
 

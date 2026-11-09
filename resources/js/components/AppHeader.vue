@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
-import { BookOpen, Folder, LayoutGrid, Menu, Search } from '@lucide/vue';
+import { Bell, BookOpen, Folder, LayoutGrid, Menu, Search } from '@lucide/vue';
 import { computed } from 'vue';
 import AppLogo from '@/components/AppLogo.vue';
 import AppLogoIcon from '@/components/AppLogoIcon.vue';
@@ -48,6 +48,9 @@ const props = withDefaults(defineProps<Props>(), {
 
 const page = usePage();
 const auth = computed(() => page.props.auth);
+const unreadNotifications = computed(
+    () => (page.props.unreadNotifications as number | undefined) ?? 0,
+);
 const { isCurrentUrl, whenCurrentUrl } = useCurrentUrl();
 
 const activeItemStyles =
@@ -237,6 +240,36 @@ const rightNavItems: NavItem[] = [
                             </template>
                         </div>
                     </div>
+
+                    <Link
+                        href="/notifications"
+                        class="relative"
+                        :aria-label="
+                            unreadNotifications > 0
+                                ? `Notifikasi, ${unreadNotifications} belum dibaca`
+                                : 'Notifikasi'
+                        "
+                    >
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            class="group relative h-9 w-9 cursor-pointer"
+                        >
+                            <Bell
+                                class="size-5 opacity-80 group-hover:opacity-100"
+                            />
+                            <span
+                                v-if="unreadNotifications > 0"
+                                class="absolute -top-1 -right-1 flex min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] leading-5 font-semibold text-white"
+                            >
+                                {{
+                                    unreadNotifications > 99
+                                        ? '99+'
+                                        : unreadNotifications
+                                }}
+                            </span>
+                        </Button>
+                    </Link>
 
                     <DropdownMenu>
                         <DropdownMenuTrigger :as-child="true">

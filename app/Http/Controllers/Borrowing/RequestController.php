@@ -34,12 +34,15 @@ class RequestController extends Controller
         ]);
     }
 
-    public function create(): Response
+    public function create(Request $request, MemberEligibilityService $eligibility): Response
     {
         $sop = SopDocument::where('is_active', true)->firstOrFail();
+        $member = $request->user()->member;
 
         return Inertia::render('borrowing/Create', [
             'sop' => $sop->only(['id', 'version', 'title', 'content']),
+            // §7.1: show why borrowing is blocked instead of failing on submit.
+            'blocks' => $member ? $eligibility->activeBlockSummary($member) : [],
         ]);
     }
 

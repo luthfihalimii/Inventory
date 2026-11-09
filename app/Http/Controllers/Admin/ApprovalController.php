@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\AvailabilityService;
 use App\Services\MemberEligibilityService;
+use App\Services\NotificationService;
 use App\Services\ReservationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -86,6 +87,7 @@ class ApprovalController extends Controller
         ReservationService $reservations,
         MemberEligibilityService $eligibility,
         AuditLogger $audit,
+        NotificationService $notifications,
     ): RedirectResponse {
         Gate::authorize('approve-borrow-request');
 
@@ -129,6 +131,14 @@ class ApprovalController extends Controller
             );
         });
 
+        $notifications->notifyMember(
+            $borrowRequest->member_id,
+            'borrow_request.approved',
+            'Pengajuan disetujui',
+            'Barang sudah direservasi. Silakan ambil sesuai jadwal di hari yang dipilih.',
+            ['borrow_request_id' => $borrowRequest->id],
+        );
+
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Pengajuan disetujui.']);
 
         return redirect()->route('admin.approval.index');
@@ -138,6 +148,7 @@ class ApprovalController extends Controller
         Request $request,
         BorrowRequest $borrowRequest,
         AuditLogger $audit,
+        NotificationService $notifications,
     ): RedirectResponse {
         Gate::authorize('approve-borrow-request');
 
@@ -172,6 +183,14 @@ class ApprovalController extends Controller
                 ['status' => 'rejected'],
             );
         });
+
+        $notifications->notifyMember(
+            $borrowRequest->member_id,
+            'borrow_request.rejected',
+            'Pengajuan ditolak',
+            $data['notes'],
+            ['borrow_request_id' => $borrowRequest->id],
+        );
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Pengajuan ditolak.']);
 
