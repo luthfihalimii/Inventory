@@ -32,7 +32,7 @@ const status = ref(props.filters.status);
 function applyFilter(): void {
     router.get(
         '/admin/approval',
-        { status: status.value || undefined },
+        { status: status.value },
         { preserveState: true, replace: true },
     );
 }

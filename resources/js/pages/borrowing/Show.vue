@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { Head, Link, router } from '@inertiajs/vue3';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
+import { computed } from 'vue';
+import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 
 type BorrowRequest = {
@@ -53,6 +55,18 @@ const categoryLabel: Record<string, string> = {
     urgent: 'Mendadak',
 };
 
+const canCancel = computed(
+    () =>
+        ['pending_approval', 'approved'].includes(props.request.status) &&
+        (!props.request.loan_status ||
+            props.request.loan_status === 'reserved'),
+);
+const cancelError = computed(() => {
+    const errors = usePage().props.errors as Record<string, string>;
+
+    return errors.reason ?? errors.status;
+});
+
 function formatDate(value: string): string {
     return new Date(value).toLocaleString('id-ID', {
         dateStyle: 'medium',
@@ -89,19 +103,13 @@ function cancel(): void {
                 <Button variant="outline" as-child>
                     <Link href="/peminjaman">Kembali</Link>
                 </Button>
-                <Button
-                    v-if="
-                        ['pending_approval', 'approved'].includes(
-                            request.status,
-                        )
-                    "
-                    variant="destructive"
-                    @click="cancel"
-                >
+                <Button v-if="canCancel" variant="destructive" @click="cancel">
                     Batalkan
                 </Button>
             </div>
         </div>
+
+        <InputError :message="cancelError" />
 
         <dl class="grid gap-3 rounded-lg border p-4 text-sm sm:grid-cols-2">
             <div>

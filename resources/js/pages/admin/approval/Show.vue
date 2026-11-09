@@ -56,8 +56,11 @@ defineOptions({
 const rejectForm = useForm({ notes: '' });
 const approveForm = useForm({ notes: '' });
 const cancelForm = useForm({ reason: '' });
-const decisionError = computed(
-    () => (approveForm.errors as Record<string, string>).decision,
+const approveErrors = computed(
+    () => approveForm.errors as Record<string, string>,
+);
+const cancelErrors = computed(
+    () => cancelForm.errors as Record<string, string>,
 );
 const showReject = ref(false);
 const showCancel = ref(false);
@@ -206,7 +209,9 @@ function formatDate(value: string): string {
                     Tolak
                 </Button>
             </div>
-            <InputError :message="decisionError" />
+            <InputError :message="approveErrors.decision" />
+            <InputError :message="approveErrors.items" />
+            <InputError :message="approveErrors.member" />
 
             <form v-if="showReject" class="grid gap-2" @submit.prevent="reject">
                 <Label for="notes">Alasan penolakan</Label>
@@ -254,6 +259,7 @@ function formatDate(value: string): string {
                     required
                 />
                 <InputError :message="cancelForm.errors.reason" />
+                <InputError :message="cancelErrors.status" />
                 <div>
                     <Button
                         type="submit"

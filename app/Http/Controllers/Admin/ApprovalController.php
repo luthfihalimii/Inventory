@@ -49,7 +49,7 @@ class ApprovalController extends Controller
         $borrowRequest->load([
             'member:id,name,nrp,division_id,membership_status,borrowing_status',
             'member.division:id,name',
-            'items.item:id,code,name,tracking_method',
+            'items.item:id,code,name,tracking_method,status,quantity_total',
             'approval.approver:id,name',
         ]);
 
