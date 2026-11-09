@@ -14,7 +14,7 @@ return new class extends Migration
             $table->string('email')->nullable()->change();
             $table->enum('status', ['active', 'inactive'])->default('active')->after('password');
             $table->boolean('must_change_password')->default(false);
-            $table->timestamp('last_login_at')->nullable();
+            $table->timestampTz('last_login_at')->nullable();
         });
     }
 
@@ -24,6 +24,7 @@ return new class extends Migration
             $table->dropConstrainedForeignId('member_id');
             $table->dropUnique(['username']);
             $table->dropColumn(['username', 'status', 'must_change_password', 'last_login_at']);
+            $table->string('email')->nullable(false)->change();
         });
     }
 };

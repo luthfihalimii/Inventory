@@ -27,7 +27,7 @@ class DatabaseSeederTest extends TestCase
         $this->assertSame(2, Location::count());
 
         $expectations = [
-            'anggota' => 'user',
+            '2410000001' => 'user',
             'korlab' => 'admin_korlab',
             'wm' => 'wm',
         ];
@@ -39,6 +39,9 @@ class DatabaseSeederTest extends TestCase
             $this->assertNotNull($user->member->division);
             $this->assertSame([$role], $user->roles->pluck('name')->all());
         }
+
+        $personal = User::where('username', '2410000001')->firstOrFail();
+        $this->assertSame($personal->member->nrp, $personal->username);
     }
 
     public function test_seeders_can_run_twice_without_duplicates(): void

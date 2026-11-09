@@ -19,7 +19,7 @@ return new class extends Migration
             $table->text('notes')->nullable();
             $table->enum('membership_status', ['active', 'inactive'])->default('active');
             $table->enum('borrowing_status', ['eligible', 'borrowing_blocked'])->default('eligible');
-            $table->timestamps();
+            $table->timestampsTz();
         });
     }
 

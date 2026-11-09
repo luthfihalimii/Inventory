@@ -18,7 +18,7 @@ return new class extends Migration
             $table->enum('status', ['available', 'borrowed', 'damaged', 'maintenance', 'lost', 'inactive'])
                 ->default('available');
             $table->text('notes')->nullable();
-            $table->timestamps();
+            $table->timestampsTz();
         });
     }
 

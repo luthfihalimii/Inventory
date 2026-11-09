@@ -22,7 +22,7 @@ return new class extends Migration
             $table->foreignId('location_id')->constrained()->restrictOnDelete();
             $table->string('qr_token', 64)->unique();
             $table->text('notes')->nullable();
-            $table->timestamps();
+            $table->timestampsTz();
         });
 
         DB::statement("ALTER TABLE items ADD CONSTRAINT items_quantity_tracking_check CHECK (

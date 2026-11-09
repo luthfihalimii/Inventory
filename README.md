@@ -54,7 +54,7 @@ composer dev
 
 | Username  | Role         | Password   |
 | --------- | ------------ | ---------- |
-| `anggota` | user         | `password` |
+| `2410000001` | user         | `password` |
 | `korlab`  | admin_korlab | `password` |
 | `wm`      | wm           | `password` |
 

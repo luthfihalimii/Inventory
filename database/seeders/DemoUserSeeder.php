@@ -17,7 +17,7 @@ class DemoUserSeeder extends Seeder
 
         $accounts = [
             [
-                'username' => 'anggota',
+                'username' => '2410000001',
                 'name' => 'Anggota Demo',
                 'nrp' => '2410000001',
                 'member_code' => 'MBR-0001',
