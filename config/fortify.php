@@ -1,7 +1,5 @@
 <?php
 
-use Laravel\Fortify\Features;
-
 return [
 
     /*
@@ -143,7 +141,7 @@ return [
     */
 
     'features' => [
-        Features::resetPasswords(),
+        // Reset password mandiri ditunda ke P1; MVP memakai reset oleh WM.
     ],
 
 ];
