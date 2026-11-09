@@ -53,4 +53,10 @@ class Item extends Model
     {
         return $this->hasMany(Asset::class);
     }
+
+    /** @return HasMany<DamageReport, $this> */
+    public function damageReports(): HasMany
+    {
+        return $this->hasMany(DamageReport::class);
+    }
 }

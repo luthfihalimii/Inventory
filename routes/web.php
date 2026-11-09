@@ -9,5 +9,6 @@ Route::middleware('auth')->group(function () {
 });
 
 require __DIR__.'/auth.php';
+require __DIR__.'/inventory.php';
 require __DIR__.'/wm.php';
 require __DIR__.'/settings.php';

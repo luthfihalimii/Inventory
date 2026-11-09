@@ -2,12 +2,17 @@
 import { Link, usePage } from '@inertiajs/vue3';
 import {
     BookOpen,
+    Boxes,
     Building2,
     FolderGit2,
     LayoutGrid,
+    MapPin,
+    Package,
     ScrollText,
+    Tag,
     Users,
     UsersRound,
+    Wrench,
 } from '@lucide/vue';
 import { computed } from 'vue';
 import AppLogo from '@/components/AppLogo.vue';
@@ -27,17 +32,34 @@ import { dashboard } from '@/routes';
 import type { NavItem } from '@/types';
 
 const page = usePage();
-const isWm = computed(() =>
-    (
-        (page.props.auth?.user as { roles?: string[] } | null)?.roles ?? []
-    ).includes('wm'),
+const roles = computed(
+    () => (page.props.auth?.user as { roles?: string[] } | null)?.roles ?? [],
 );
+const isWm = computed(() => roles.value.includes('wm'));
+const isAdmin = computed(() => roles.value.includes('admin_korlab'));
 
 const mainNavItems: NavItem[] = [
     {
         title: 'Dashboard',
         href: dashboard(),
         icon: LayoutGrid,
+    },
+    {
+        title: 'Inventaris',
+        href: '/inventory',
+        icon: Package,
+    },
+];
+
+const adminNavItems: NavItem[] = [
+    { title: 'Kelola barang', href: '/admin/inventory/items', icon: Boxes },
+    { title: 'Kategori', href: '/admin/inventory/categories', icon: Tag },
+    { title: 'Lokasi', href: '/admin/inventory/locations', icon: MapPin },
+    { title: 'Unit aset', href: '/admin/inventory/assets', icon: Boxes },
+    {
+        title: 'Kerusakan',
+        href: '/admin/inventory/damage-reports',
+        icon: Wrench,
     },
 ];
 
@@ -78,6 +100,7 @@ const footerNavItems: NavItem[] = [
 
         <SidebarContent>
             <NavMain :items="mainNavItems" />
+            <NavMain v-if="isAdmin" :items="adminNavItems" label="Inventaris" />
             <NavMain v-if="isWm" :items="wmNavItems" label="Manajemen" />
         </SidebarContent>
 

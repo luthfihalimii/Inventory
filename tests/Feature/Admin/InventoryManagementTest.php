@@ -1,0 +1,256 @@
+<?php
+
+namespace Tests\Feature\Admin;
+
+use App\Models\Asset;
+use App\Models\AuditLog;
+use App\Models\Category;
+use App\Models\DamageReport;
+use App\Models\Item;
+use App\Models\Location;
+use App\Models\Role;
+use App\Models\User;
+use App\Services\AvailabilityService;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+class InventoryManagementTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private function admin(): User
+    {
+        $user = User::factory()->create();
+        $user->roles()->attach(Role::factory()->create(['name' => 'admin_korlab']));
+
+        return $user;
+    }
+
+    private function userWithRole(string $role): User
+    {
+        $user = User::factory()->create();
+        $user->roles()->attach(Role::firstOrCreate(['name' => $role]));
+
+        return $user;
+    }
+
+    private function itemPayload(array $overrides = []): array
+    {
+        return [
+            'code' => 'ITM-9001',
+            'name' => 'Kamera Test',
+            'category_id' => Category::factory()->create()->id,
+            'location_id' => Location::factory()->create()->id,
+            'tracking_method' => 'quantity',
+            'quantity_total' => 5,
+            'status' => 'active',
+            ...$overrides,
+        ];
+    }
+
+    public function test_only_admin_korlab_can_manage_inventory(): void
+    {
+        $this->actingAs($this->userWithRole('user'))
+            ->get(route('admin.inventory.items.index'))
+            ->assertForbidden();
+
+        $this->actingAs($this->userWithRole('wm'))
+            ->get(route('admin.inventory.items.index'))
+            ->assertForbidden();
+
+        $this->actingAs($this->admin())
+            ->get(route('admin.inventory.items.index'))
+            ->assertOk();
+    }
+
+    public function test_everyone_can_browse_the_catalog(): void
+    {
+        $item = Item::factory()->quantity()->create(['name' => 'Kabel HDMI']);
+
+        $this->actingAs($this->userWithRole('user'))
+            ->get(route('inventory.index'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('inventory/Index')
+                ->has('items.data', 1)
+                ->where('items.data.0.code', $item->code));
+
+        $this->actingAs($this->userWithRole('user'))
+            ->get(route('inventory.show', $item))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('inventory/Show')
+                ->where('item.id', $item->id)
+                ->where('canManage', false));
+    }
+
+    public function test_admin_can_create_an_item_with_a_qr_token(): void
+    {
+        $payload = $this->itemPayload();
+
+        $this->actingAs($this->admin())
+            ->post(route('admin.inventory.items.store'), $payload)
+            ->assertRedirect();
+
+        $item = Item::where('code', 'ITM-9001')->firstOrFail();
+
+        $this->assertSame(5, $item->quantity_total);
+        $this->assertSame(40, strlen($item->qr_token));
+        $this->assertSame(1, AuditLog::where('action', 'item.created')->count());
+    }
+
+    public function test_item_code_must_be_unique(): void
+    {
+        $existing = Item::factory()->create();
+
+        $this->actingAs($this->admin())
+            ->post(route('admin.inventory.items.store'), $this->itemPayload(['code' => $existing->code]))
+            ->assertSessionHasErrors('code');
+    }
+
+    public function test_admin_can_create_a_serialized_item_and_its_units(): void
+    {
+        $admin = $this->admin();
+        $item = Item::factory()->create();
+
+        $this->actingAs($admin)
+            ->post(route('admin.inventory.assets.store'), [
+                'item_id' => $item->id,
+                'asset_code' => 'AST-9001',
+                'serial_number' => 'SN-9001',
+                'condition' => 'good',
+                'status' => 'available',
+            ])
+            ->assertRedirect();
+
+        $asset = Asset::where('asset_code', 'AST-9001')->firstOrFail();
+
+        $this->assertSame($item->id, $asset->item_id);
+        $this->assertSame(40, strlen($asset->qr_token));
+        $this->assertSame(1, AuditLog::where('action', 'asset.created')->count());
+    }
+
+    public function test_units_cannot_be_added_to_quantity_tracked_items(): void
+    {
+        $item = Item::factory()->quantity()->create();
+
+        $this->actingAs($this->admin())
+            ->post(route('admin.inventory.assets.store'), [
+                'item_id' => $item->id,
+                'asset_code' => 'AST-9002',
+                'condition' => 'good',
+                'status' => 'available',
+            ])
+            ->assertSessionHasErrors('item_id');
+    }
+
+    public function test_quantity_cannot_drop_below_open_reports(): void
+    {
+        $item = Item::factory()->quantity()->create(['quantity_total' => 5]);
+        DamageReport::factory()->create(['item_id' => $item->id, 'quantity' => 4]);
+
+        $this->actingAs($this->admin())
+            ->put(route('admin.inventory.items.update', $item), $this->itemPayload([
+                'code' => $item->code,
+                'name' => $item->name,
+                'category_id' => $item->category_id,
+                'location_id' => $item->location_id,
+                'quantity_total' => 3,
+            ]))
+            ->assertSessionHasErrors('quantity_total');
+
+        $this->assertSame(5, $item->fresh()->quantity_total);
+    }
+
+    public function test_damaged_serialized_unit_is_not_available_until_repaired(): void
+    {
+        $admin = $this->admin();
+        $item = Item::factory()->create();
+        $asset = Asset::factory()->for($item)->create(['status' => 'available']);
+
+        $this->actingAs($admin)
+            ->post(route('admin.inventory.damage-reports.store', $item), [
+                'asset_id' => $asset->id,
+                'type' => 'damage',
+                'description' => 'Lensa lecet.',
+            ])
+            ->assertRedirect();
+
+        $report = DamageReport::firstOrFail();
+        $asset->refresh();
+
+        $this->assertSame('damaged', $asset->status);
+        $this->assertSame('open', $report->status);
+        $this->assertSame(0, app(AvailabilityService::class)->summary($item->fresh())['available']);
+
+        $this->actingAs($admin)
+            ->put(route('admin.inventory.damage-reports.resolve', $report), ['resolution' => 'repaired'])
+            ->assertRedirect();
+
+        $this->assertSame('available', $asset->fresh()->status);
+        $this->assertSame('resolved', $report->fresh()->status);
+        $this->assertSame(1, app(AvailabilityService::class)->summary($item->fresh())['available']);
+        $this->assertSame(1, AuditLog::where('action', 'damage.reported')->count());
+        $this->assertSame(1, AuditLog::where('action', 'damage.resolved')->count());
+    }
+
+    public function test_written_off_quantity_reduces_stock(): void
+    {
+        $admin = $this->admin();
+        $item = Item::factory()->quantity()->create(['quantity_total' => 5]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.inventory.damage-reports.store', $item), [
+                'type' => 'loss',
+                'quantity' => 2,
+                'description' => 'Hilang saat kegiatan.',
+            ])
+            ->assertRedirect();
+
+        $report = DamageReport::firstOrFail();
+
+        $this->actingAs($admin)
+            ->put(route('admin.inventory.damage-reports.resolve', $report), ['resolution' => 'written_off'])
+            ->assertRedirect();
+
+        $this->assertSame(3, $item->fresh()->quantity_total);
+        $this->assertSame(3, app(AvailabilityService::class)->summary($item->fresh())['available']);
+    }
+
+    public function test_damage_quantity_cannot_exceed_available_stock(): void
+    {
+        $item = Item::factory()->quantity()->create(['quantity_total' => 2]);
+
+        $this->actingAs($this->admin())
+            ->post(route('admin.inventory.damage-reports.store', $item), [
+                'type' => 'damage',
+                'quantity' => 3,
+                'description' => 'Rusak.',
+            ])
+            ->assertSessionHasErrors('quantity');
+    }
+
+    public function test_non_admin_cannot_report_damage(): void
+    {
+        $item = Item::factory()->create();
+
+        $this->actingAs($this->userWithRole('user'))
+            ->post(route('admin.inventory.damage-reports.store', $item), [
+                'type' => 'damage',
+                'description' => 'Rusak.',
+            ])
+            ->assertForbidden();
+    }
+
+    public function test_qr_page_is_printable(): void
+    {
+        $item = Item::factory()->create();
+
+        $this->actingAs($this->admin())
+            ->get(route('admin.inventory.items.qr', $item))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('admin/inventory/items/Qr')
+                ->where('item.qr_token', $item->qr_token));
+    }
+}
