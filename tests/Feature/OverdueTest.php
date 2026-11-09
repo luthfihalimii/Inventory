@@ -293,6 +293,44 @@ class OverdueTest extends TestCase
         $this->assertSame(0, AuditLog::where('action', 'member.unblocked')->count());
     }
 
+    public function test_member_stays_blocked_when_another_loan_just_went_past_due_unflagged(): void
+    {
+        $item = Item::factory()->quantity()->create(['quantity_total' => 5]);
+        [$first, $member] = $this->overdueLoan();
+        $creator = $this->userWithRole('user', $member);
+
+        $this->artisan('inventory:overdue')->assertSuccessful();
+
+        // Second loan is past due but the scheduler has not flagged it yet.
+        [$second] = $this->overdueLoan('borrowed', $member);
+        $this->assertNull($second->fresh()->overdue_at);
+
+        $first->update(['status' => 'return_pending_verification']);
+        $returnRequest = ReturnRequest::factory()->create([
+            'loan_transaction_id' => $first->id,
+            'requested_by_user_id' => $creator->id,
+        ]);
+        $loanItem = LoanItem::factory()->create([
+            'loan_transaction_id' => $first->id,
+            'item_id' => $item->id,
+            'asset_id' => null,
+            'quantity' => 2,
+        ]);
+
+        $this->actingAs($this->userWithRole('admin_korlab'))
+            ->post(route('admin.returns.verify', $returnRequest), [
+                'items' => [[
+                    'loan_item_id' => $loanItem->id,
+                    'condition' => 'good',
+                    'quantity_returned' => 2,
+                ]],
+            ])
+            ->assertRedirect();
+
+        // The member must not read as eligible while a past-due loan is still out.
+        $this->assertSame('borrowing_blocked', $member->fresh()->borrowing_status);
+    }
+
     public function test_overdue_member_cannot_be_approved(): void
     {
         [$loan, $member] = $this->overdueLoan();

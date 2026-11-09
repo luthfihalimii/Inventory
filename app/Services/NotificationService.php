@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Notification;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\DB;
 use Throwable;
 
 class NotificationService
@@ -18,14 +19,15 @@ class NotificationService
     public function notifyUser(User $user, string $type, string $title, ?string $body = null, array $data = []): void
     {
         try {
-            Notification::create([
+            // Savepoint when nested: a failed insert must not abort the caller's transaction.
+            DB::transaction(fn () => Notification::create([
                 'user_id' => $user->id,
                 'type' => $type,
                 'title' => $title,
                 'body' => $body,
                 'data' => $data === [] ? null : $data,
                 'created_at' => now(),
-            ]);
+            ]));
         } catch (Throwable $exception) {
             report($exception);
         }

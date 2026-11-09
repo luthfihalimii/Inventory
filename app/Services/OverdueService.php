@@ -256,13 +256,32 @@ class OverdueService
             );
         }
 
+        // Lock the member row so concurrent verifications serialize: the loser re-reads the
+        // already-committed release instead of leaving the member blocked forever.
+        $member = Member::whereKey($loan->member_id)->lockForUpdate()->first();
+
+        if ($member === null) {
+            return;
+        }
+
         $stillBlocked = MemberBorrowingBlock::where('member_id', $loan->member_id)
             ->whereNull('ended_at')
             ->exists();
 
-        $member = Member::whereKey($loan->member_id)->first();
+        if ($stillBlocked) {
+            return;
+        }
 
-        if ($member === null || $stillBlocked) {
+        // A loan that went past due inside this scheduler window has no block yet, but the
+        // member must stay blocked until it is returned too.
+        $otherOverdue = LoanTransaction::where('member_id', $loan->member_id)
+            ->whereKeyNot($loan->id)
+            ->whereIn('status', ['borrowed', 'return_pending_verification'])
+            ->whereNotNull('due_at')
+            ->where('due_at', '<', now())
+            ->exists();
+
+        if ($otherOverdue) {
             return;
         }
 

@@ -13,6 +13,7 @@ use App\Models\Role;
 use App\Models\User;
 use App\Services\NotificationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia;
 use Tests\TestCase;
 
@@ -165,6 +166,22 @@ class NotificationTest extends TestCase
         $service->notifyMember($user->member_id, 'test.member', 'Judul');
 
         $this->assertSame(2, Notification::where('user_id', $user->id)->count());
+    }
+
+    public function test_failed_notification_does_not_abort_the_caller_transaction(): void
+    {
+        $user = $this->userWithRole('user');
+        $service = app(NotificationService::class);
+
+        DB::transaction(function () use ($user, $service): void {
+            // 300 chars overflows varchar(255): the insert fails, the savepoint must absorb it.
+            $service->notifyUser($user, str_repeat('x', 300), 'Judul');
+
+            $user->update(['name' => 'Transaksi Masih Hidup']);
+        });
+
+        $this->assertSame('Transaksi Masih Hidup', $user->fresh()->name);
+        $this->assertSame(0, Notification::count());
     }
 
     /**
