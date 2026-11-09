@@ -23,6 +23,14 @@ type BorrowRequest = {
         decided_at: string;
     } | null;
     loan_status: string | null;
+    loan: {
+        id: number;
+        status: string;
+        checked_out_at: string | null;
+        due_at: string | null;
+        completed_at: string | null;
+        return_status: string | null;
+    } | null;
     items: {
         item_id: number;
         code: string | null;
@@ -66,6 +74,43 @@ const cancelError = computed(() => {
 
     return errors.reason ?? errors.status;
 });
+
+const canRequestReturn = computed(
+    () =>
+        props.request.loan !== null &&
+        ['borrowed', 'overdue'].includes(props.request.loan.status),
+);
+
+const loanError = computed(
+    () => (usePage().props.errors as Record<string, string>).status,
+);
+
+const loanStatusLabel: Record<string, string> = {
+    reserved: 'Menunggu penyerahan',
+    borrowed: 'Dipinjam',
+    overdue: 'Terlambat',
+    return_pending_verification: 'Menunggu verifikasi pengembalian',
+    completed: 'Selesai',
+    cancelled: 'Dibatalkan',
+};
+
+const returnStatusLabel: Record<string, string> = {
+    pending: 'Menunggu verifikasi',
+    verified: 'Terverifikasi',
+    cancelled: 'Dibatalkan',
+};
+
+function requestReturn(): void {
+    if (!props.request.loan || !window.confirm('Ajukan pengembalian barang?')) {
+        return;
+    }
+
+    router.post(
+        `/peminjaman/${props.request.loan.id}/return`,
+        {},
+        { preserveScroll: true },
+    );
+}
 
 function formatDate(value: string): string {
     return new Date(value).toLocaleString('id-ID', {
@@ -178,6 +223,32 @@ function cancel(): void {
             <p v-if="request.approval.notes" class="mt-2">
                 {{ request.approval.notes }}
             </p>
+        </div>
+
+        <div v-if="request.loan" class="rounded-lg border p-4 text-sm">
+            <p class="font-medium">
+                Status pinjaman:
+                {{
+                    loanStatusLabel[request.loan.status] ?? request.loan.status
+                }}
+            </p>
+            <p v-if="request.loan.checked_out_at" class="text-muted-foreground">
+                Diserahkan: {{ formatDate(request.loan.checked_out_at) }}
+            </p>
+            <p v-if="request.loan.due_at" class="text-muted-foreground">
+                Tenggat: {{ formatDate(request.loan.due_at) }}
+            </p>
+            <p v-if="request.loan.return_status" class="text-muted-foreground">
+                Pengembalian:
+                {{
+                    returnStatusLabel[request.loan.return_status] ??
+                    request.loan.return_status
+                }}
+            </p>
+            <div v-if="canRequestReturn" class="mt-3">
+                <Button @click="requestReturn">Ajukan pengembalian</Button>
+            </div>
+            <InputError :message="loanError" />
         </div>
 
         <div

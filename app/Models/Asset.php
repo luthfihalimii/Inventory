@@ -40,4 +40,10 @@ class Asset extends Model
     {
         return $this->hasMany(Reservation::class);
     }
+
+    /** @return HasMany<LoanItem, $this> */
+    public function loanItems(): HasMany
+    {
+        return $this->hasMany(LoanItem::class);
+    }
 }

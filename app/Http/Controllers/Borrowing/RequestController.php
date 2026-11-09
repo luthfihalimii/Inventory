@@ -144,6 +144,8 @@ class RequestController extends Controller
             'loanTransaction',
         ]);
 
+        $loan = $borrowRequest->loanTransaction;
+
         return Inertia::render('borrowing/Show', [
             'request' => [
                 ...$borrowRequest->only([
@@ -152,7 +154,15 @@ class RequestController extends Controller
                     'submitted_at', 'cancelled_at', 'cancellation_reason',
                 ]),
                 'approval' => $borrowRequest->approval?->only(['decision', 'notes', 'decided_at']),
-                'loan_status' => $borrowRequest->loanTransaction?->status,
+                'loan_status' => $loan?->status,
+                'loan' => $loan ? [
+                    'id' => $loan->id,
+                    'status' => $loan->status,
+                    'checked_out_at' => $loan->checked_out_at,
+                    'due_at' => $loan->due_at,
+                    'completed_at' => $loan->completed_at,
+                    'return_status' => $loan->returnRequests()->latest('id')->value('status'),
+                ] : null,
                 'items' => $borrowRequest->items->map(fn ($line) => [
                     'item_id' => $line->item_id,
                     'code' => $line->item?->code,

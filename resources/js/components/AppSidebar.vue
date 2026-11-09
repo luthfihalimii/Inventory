@@ -12,6 +12,8 @@ import {
     Package,
     ScrollText,
     Tag,
+    Undo2,
+    ScanLine,
     Users,
     UsersRound,
     Wrench,
@@ -63,6 +65,8 @@ const approvalNavItems: NavItem[] = [
 ];
 
 const adminNavItems: NavItem[] = [
+    { title: 'Checkout', href: '/admin/checkout', icon: ScanLine },
+    { title: 'Pengembalian', href: '/admin/returns', icon: Undo2 },
     { title: 'Kelola barang', href: '/admin/inventory/items', icon: Boxes },
     { title: 'Kategori', href: '/admin/inventory/categories', icon: Tag },
     { title: 'Lokasi', href: '/admin/inventory/locations', icon: MapPin },

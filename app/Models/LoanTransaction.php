@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 
 /**
@@ -61,5 +63,29 @@ class LoanTransaction extends Model
     public function member(): BelongsTo
     {
         return $this->belongsTo(Member::class);
+    }
+
+    /** @return HasMany<LoanItem, $this> */
+    public function items(): HasMany
+    {
+        return $this->hasMany(LoanItem::class);
+    }
+
+    /** @return HasOne<HandoverRecord, $this> */
+    public function handover(): HasOne
+    {
+        return $this->hasOne(HandoverRecord::class);
+    }
+
+    /** @return HasMany<Reservation, $this> */
+    public function reservations(): HasMany
+    {
+        return $this->hasMany(Reservation::class, 'borrow_request_id', 'borrow_request_id');
+    }
+
+    /** @return HasMany<ReturnRequest, $this> */
+    public function returnRequests(): HasMany
+    {
+        return $this->hasMany(ReturnRequest::class);
     }
 }

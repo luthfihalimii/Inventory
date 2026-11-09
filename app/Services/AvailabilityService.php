@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Item;
+use App\Models\LoanItem;
 use Carbon\CarbonInterface;
 
 class AvailabilityService
@@ -15,6 +16,8 @@ class AvailabilityService
     public function summary(Item $item): array
     {
         $isActive = $item->status === 'active';
+        $start = now();
+        $end = now()->addSecond();
 
         if ($item->tracking_method === 'serialized') {
             $counts = $item->assets()
@@ -22,11 +25,17 @@ class AvailabilityService
                 ->groupBy('status')
                 ->pluck('aggregate', 'status');
 
+            $reserved = (int) $item->reservations()
+                ->whereNotNull('asset_id')
+                ->where('status', 'active')
+                ->where('start_at', '<', $end)
+                ->where('end_at', '>', $start)
+                ->count();
+
             return [
                 'total' => (int) $counts->sum(),
-                'available' => $isActive ? (int) ($counts['available'] ?? 0) : 0,
-                // ponytail: reservations/loans arrive in Sprint 4–5; per-period counts stay zero until then.
-                'reserved' => 0,
+                'available' => $isActive ? max(0, (int) ($counts['available'] ?? 0) - $reserved) : 0,
+                'reserved' => $reserved,
                 'borrowed' => (int) ($counts['borrowed'] ?? 0),
                 'damaged' => (int) ($counts['damaged'] ?? 0),
                 'maintenance' => (int) ($counts['maintenance'] ?? 0),
@@ -37,12 +46,18 @@ class AvailabilityService
 
         $total = (int) $item->quantity_total;
         $blocked = $this->blockedQuantity($item);
+        $reserved = (int) $item->reservations()
+            ->where('status', 'active')
+            ->where('start_at', '<', $end)
+            ->where('end_at', '>', $start)
+            ->sum('quantity');
+        $borrowed = $this->outstandingLoanQuantity($item, $start, $end);
 
         return [
             'total' => $total,
-            'available' => $isActive ? max(0, $total - $blocked) : 0,
-            'reserved' => 0,
-            'borrowed' => 0,
+            'available' => $isActive ? max(0, $total - $blocked - $reserved - $borrowed) : 0,
+            'reserved' => $reserved,
+            'borrowed' => $borrowed,
             'damaged' => $blocked,
             'maintenance' => 0,
             'lost' => 0,
@@ -79,9 +94,17 @@ class AvailabilityService
         }
 
         if ($item->tracking_method === 'serialized') {
-            // ponytail: borrowed units have no due date until Sprint 5 loans exist, so they stay unavailable.
+            $busyAssetIds = LoanItem::query()
+                ->whereNotNull('asset_id')
+                ->whereHas('loanTransaction', fn ($query) => $query
+                    ->whereIn('status', ['borrowed', 'overdue', 'return_pending_verification'])
+                    ->where(fn ($query) => $query->whereNull('checked_out_at')->orWhere('checked_out_at', '<', $end))
+                    ->where(fn ($query) => $query->whereNull('due_at')->orWhere('due_at', '>', $start)))
+                ->pluck('asset_id');
+
             return $item->assets()
-                ->whereNotIn('status', ['borrowed', 'damaged', 'maintenance', 'lost', 'inactive'])
+                ->whereNotIn('status', ['damaged', 'maintenance', 'lost', 'inactive'])
+                ->whereNotIn('id', $busyAssetIds)
                 ->whereDoesntHave('reservations', fn ($query) => $query
                     ->where('status', 'active')
                     ->where('start_at', '<', $end)
@@ -95,6 +118,19 @@ class AvailabilityService
             ->where('end_at', '>', $start)
             ->sum('quantity');
 
-        return max(0, (int) $item->quantity_total - $this->blockedQuantity($item) - $reserved);
+        $borrowed = $this->outstandingLoanQuantity($item, $start, $end);
+
+        return max(0, (int) $item->quantity_total - $this->blockedQuantity($item) - $reserved - $borrowed);
+    }
+
+    private function outstandingLoanQuantity(Item $item, CarbonInterface $start, CarbonInterface $end): int
+    {
+        return (int) LoanItem::query()
+            ->where('item_id', $item->id)
+            ->whereHas('loanTransaction', fn ($query) => $query
+                ->whereIn('status', ['borrowed', 'overdue', 'return_pending_verification'])
+                ->where(fn ($query) => $query->whereNull('checked_out_at')->orWhere('checked_out_at', '<', $end))
+                ->where(fn ($query) => $query->whereNull('due_at')->orWhere('due_at', '>', $start)))
+            ->sum('quantity');
     }
 }

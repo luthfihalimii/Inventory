@@ -71,4 +71,10 @@ class Item extends Model
     {
         return $this->hasMany(BorrowRequestItem::class);
     }
+
+    /** @return HasMany<LoanItem, $this> */
+    public function loanItems(): HasMany
+    {
+        return $this->hasMany(LoanItem::class);
+    }
 }
