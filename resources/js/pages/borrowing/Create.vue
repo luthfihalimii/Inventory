@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, Link, router, useForm } from '@inertiajs/vue3';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
@@ -45,6 +45,9 @@ const form = useForm({
 });
 
 const purposeRequired = computed(() => form.category === 'urgent');
+const memberError = computed(
+    () => (usePage().props.errors as Record<string, string>).member,
+);
 const itemsError = computed(
     () => (form.errors as Record<string, string>).items,
 );
@@ -110,6 +113,8 @@ function cancel(): void {
                 Kembalikan barang dan tunggu verifikasi untuk membuka blokir.
             </p>
         </div>
+
+        <InputError :message="memberError" />
 
         <div v-if="lines.length === 0" class="rounded-lg border p-6 text-sm">
             <p class="text-muted-foreground">

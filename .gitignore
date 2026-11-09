@@ -43,3 +43,9 @@ Homestead.yaml
 /opencode.jsonc
 
 /.superpowers
+
+# Playwright
+/test-results
+/playwright-report
+/blob-report
+/playwright/.cache

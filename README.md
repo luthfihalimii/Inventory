@@ -70,6 +70,7 @@ bun run dev             # Vite Plus dev server
 bun run build           # build produksi
 bun run check           # lint + format check frontend
 bun run types:check     # vue-tsc
+bun run e2e             # build + Playwright (DB terpisah ent_inventory_e2e)
 ```
 
 ## Timezone
@@ -79,5 +80,6 @@ Aplikasi memakai `Asia/Jakarta` (`APP_TIMEZONE`). Timestamp database disimpan UT
 ## Dokumen
 
 - `PRD.md` — kebutuhan produk
+- `docs/runbook-deployment.md` — deploy, backup/restore, stock opname, pelatihan
 - `docs/superpowers/specs/` — desain teknis dan ERD
 - `docs/superpowers/plans/` — rencana implementasi per sprint
