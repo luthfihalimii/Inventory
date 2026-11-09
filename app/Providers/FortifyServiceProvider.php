@@ -62,7 +62,6 @@ class FortifyServiceProvider extends ServiceProvider
     private function configureViews(): void
     {
         Fortify::loginView(fn (Request $request) => Inertia::render('auth/Login', [
-            'canResetPassword' => false,
             'status' => $request->session()->get('status'),
         ]));
     }
