@@ -29,44 +29,58 @@
 
 **Files:** migration `damage_reports`, `app/Models/DamageReport.php`, `app/Services/AvailabilityService.php`.
 
-- [ ] Migration: jenis `damage`/`loss`/`incomplete`/`maintenance`, status `open`/`resolved`, resolusi `repaired`/`written_off`, qty, item/asset, pelapor, resolver.
-- [ ] Model + relasi ke item/asset/user.
-- [ ] `AvailabilityService::summary(Item)` menghitung total/tersedia/rusak/maintenance/hilang/nonaktif; quantity dikurangi laporan terbuka.
-- [ ] Unit test availability untuk kedua metode tracking.
+- [x] Migration: jenis `damage`/`loss`/`incomplete`/`maintenance`, status `open`/`resolved`, resolusi `repaired`/`written_off`, qty, item/asset, pelapor, resolver.
+- [x] Model + relasi ke item/asset/user.
+- [x] `AvailabilityService::summary(Item)` menghitung total/tersedia/rusak/maintenance/hilang/nonaktif; quantity dikurangi laporan terbuka.
+- [x] Unit test availability untuk kedua metode tracking.
 
 ### Task 2: CRUD kategori, lokasi, item, aset
 
 **Files:** `Admin/Inventory/{Category,Location,Item,Asset}Controller`, FormRequest, routes.
 
-- [ ] Gate `manage-inventory` untuk `admin_korlab`.
-- [ ] Kategori/lokasi: list, create, update.
-- [ ] Item: list + filter, create (generate `qr_token`), update (status, qty, dll).
-- [ ] Aset: list + filter per item, create (generate `qr_token`), update kondisi/status.
-- [ ] Guard qty: tidak boleh di bawah total laporan terbuka; tracking method tidak bisa diubah jika sudah ada aset.
-- [ ] Audit `item.created/updated`, `asset.created/updated`, `category.*`, `location.*`.
+- [x] Gate `manage-inventory` untuk `admin_korlab`.
+- [x] Kategori/lokasi: list, create, update.
+- [x] Item: list + filter, create (generate `qr_token`), update (status, qty, dll).
+- [x] Aset: list + filter per item, create (generate `qr_token`), update kondisi/status.
+- [x] Guard qty: tidak boleh di bawah total laporan terbuka; tracking method tidak bisa diubah jika sudah ada aset.
+- [x] Audit `item.created/updated`, `asset.created/updated`, `category.*`, `location.*`.
 
 ### Task 3: Katalog + detail + QR
 
 **Files:** `Inventory/CatalogController`, halaman katalog/detail, halaman QR.
 
-- [ ] Katalog: filter nama/kode/kategori/status, tampilkan ketersediaan.
-- [ ] Detail: info item, daftar unit, ringkasan stok, form laporan kerusakan untuk admin.
-- [ ] QR: halaman cetak per item (semua unit untuk serialized, satu label untuk quantity).
-- [ ] QR token tampil sebagai SVG, print-friendly.
+- [x] Katalog: filter nama/kode/kategori/status, tampilkan ketersediaan.
+- [x] Detail: info item, daftar unit, ringkasan stok, form laporan kerusakan untuk admin.
+- [x] QR: halaman cetak per item (semua unit untuk serialized, satu label untuk quantity).
+- [x] QR token tampil sebagai SVG, print-friendly.
 
 ### Task 4: Laporan kerusakan + resolusi
 
 **Files:** `Admin/Inventory/DamageReportController`.
 
-- [ ] Catat laporan dari detail item; aset serialized ikut berubah status.
-- [ ] Resolusi `repaired`: aset kembali `available`; `written_off`: aset `lost`, quantity berkurang.
-- [ ] Audit `damage.reported`, `damage.resolved`.
-- [ ] Test: stok tidak kembali otomatis, resolusi mengubah stok dengan benar.
+- [x] Catat laporan dari detail item; aset serialized ikut berubah status.
+- [x] Resolusi `repaired`: aset kembali `available`; `written_off`: aset `lost`, quantity berkurang.
+- [x] Audit `damage.reported`, `damage.resolved`.
+- [x] Test: stok tidak kembali otomatis, resolusi mengubah stok dengan benar.
 
 ### Task 5: Verifikasi
 
-- [ ] `php artisan migrate:fresh --seed`
-- [ ] `php artisan test`
-- [ ] `composer lint:check`, `composer types:check`
-- [ ] `bun run check`, `bun run types:check`, `bun run build`
-- [ ] Commit Sprint 2.
+- [x] `php artisan migrate:fresh --seed`
+- [x] `php artisan test`
+- [x] `composer lint:check`, `composer types:check`
+- [x] `bun run check`, `bun run types:check`, `bun run build`
+- [x] Commit Sprint 2.
+
+---
+
+## Completion Notes
+
+- Sprint 2 shipped in `b0b656d`; review fixes applied in the follow-up commit.
+- Deviations:
+  - Tracking method is locked once the item has assets **or** damage reports (stricter than the plan).
+  - One open damage report per asset is enforced both in the controller and by a partial unique index (`damage_reports_one_open_per_asset_idx`).
+  - Resolving a report is reject-only for `status != open`; `written_off` refuses to reduce `quantity_total` below the reported quantity (no clamping).
+  - `repaired` also resets `condition` to `good`.
+  - Inactive items report `available = 0` in `AvailabilityService`.
+  - Catalog hides `price`, `acquired_at`, `notes`, and asset `serial_number` from non-admin users.
+- Deferred: WM read-only inventory screens (currently 403), dashboard still placeholder, N+1 availability queries in item lists.

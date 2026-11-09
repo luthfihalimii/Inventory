@@ -23,7 +23,7 @@ class ItemRequest extends FormRequest
             'category_id' => ['required', 'integer', 'exists:categories,id'],
             'location_id' => ['required', 'integer', 'exists:locations,id'],
             'tracking_method' => ['required', Rule::in(['serialized', 'quantity'])],
-            'quantity_total' => ['nullable', 'integer', 'min:0', 'required_if:tracking_method,quantity', 'prohibited_if:tracking_method,serialized'],
+            'quantity_total' => ['nullable', 'integer', 'min:0', 'max:1000000', 'required_if:tracking_method,quantity', 'prohibited_if:tracking_method,serialized'],
             'price' => ['nullable', 'numeric', 'min:0', 'max:999999999999.99'],
             'acquired_at' => ['nullable', 'date'],
             'status' => ['required', Rule::in(['active', 'inactive'])],

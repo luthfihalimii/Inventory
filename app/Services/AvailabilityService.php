@@ -13,6 +13,8 @@ class AvailabilityService
      */
     public function summary(Item $item): array
     {
+        $isActive = $item->status === 'active';
+
         if ($item->tracking_method === 'serialized') {
             $counts = $item->assets()
                 ->selectRaw('status, count(*) as aggregate')
@@ -21,7 +23,7 @@ class AvailabilityService
 
             return [
                 'total' => (int) $counts->sum(),
-                'available' => (int) ($counts['available'] ?? 0),
+                'available' => $isActive ? (int) ($counts['available'] ?? 0) : 0,
                 // ponytail: reservations/loans arrive in Sprint 4–5; per-period counts stay zero until then.
                 'reserved' => 0,
                 'borrowed' => (int) ($counts['borrowed'] ?? 0),
@@ -37,7 +39,7 @@ class AvailabilityService
 
         return [
             'total' => $total,
-            'available' => max(0, $total - $blocked),
+            'available' => $isActive ? max(0, $total - $blocked) : 0,
             'reserved' => 0,
             'borrowed' => 0,
             'damaged' => $blocked,

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -65,6 +65,15 @@ const form = useForm<{
     status: 'active',
     notes: '',
 });
+
+watch(
+    () => form.tracking_method,
+    (method) => {
+        if (method === 'serialized') {
+            form.quantity_total = undefined;
+        }
+    },
+);
 
 function applyFilters(): void {
     router.get(

@@ -253,4 +253,125 @@ class InventoryManagementTest extends TestCase
                 ->component('admin/inventory/items/Qr')
                 ->where('item.qr_token', $item->qr_token));
     }
+
+    public function test_non_admin_cannot_write_inventory(): void
+    {
+        $item = Item::factory()->create();
+        $asset = Asset::factory()->for($item)->create();
+
+        $user = $this->userWithRole('user');
+        $payload = $this->itemPayload();
+
+        $this->actingAs($user)
+            ->post(route('admin.inventory.items.store'), $payload)
+            ->assertForbidden();
+
+        $this->actingAs($user)
+            ->put(route('admin.inventory.items.update', $item), [...$payload, 'code' => $item->code])
+            ->assertForbidden();
+
+        $this->actingAs($user)
+            ->post(route('admin.inventory.categories.store'), ['name' => 'X'])
+            ->assertForbidden();
+
+        $this->actingAs($user)
+            ->put(route('admin.inventory.assets.update', $asset), [
+                'asset_code' => $asset->asset_code,
+                'condition' => 'good',
+                'status' => 'available',
+            ])
+            ->assertForbidden();
+    }
+
+    public function test_qr_token_cannot_be_set_from_the_payload(): void
+    {
+        $this->actingAs($this->admin())
+            ->post(route('admin.inventory.items.store'), [
+                ...$this->itemPayload(),
+                'qr_token' => 'attacker-controlled',
+            ])
+            ->assertRedirect();
+
+        $item = Item::where('code', 'ITM-9001')->firstOrFail();
+
+        $this->assertNotSame('attacker-controlled', $item->qr_token);
+        $this->assertSame(40, strlen($item->qr_token));
+    }
+
+    public function test_tracking_method_cannot_change_once_units_exist(): void
+    {
+        $item = Item::factory()->create();
+        Asset::factory()->for($item)->create();
+
+        $this->actingAs($this->admin())
+            ->put(route('admin.inventory.items.update', $item), [
+                'code' => $item->code,
+                'name' => $item->name,
+                'category_id' => $item->category_id,
+                'location_id' => $item->location_id,
+                'tracking_method' => 'quantity',
+                'quantity_total' => 1,
+                'status' => 'active',
+            ])
+            ->assertSessionHasErrors('tracking_method');
+
+        $this->assertSame('serialized', $item->fresh()->tracking_method);
+    }
+
+    public function test_report_rejects_an_asset_from_another_item(): void
+    {
+        $item = Item::factory()->create();
+        $other = Item::factory()->create();
+        $asset = Asset::factory()->for($other)->create(['status' => 'available']);
+
+        $this->actingAs($this->admin())
+            ->post(route('admin.inventory.damage-reports.store', $item), [
+                'asset_id' => $asset->id,
+                'type' => 'damage',
+                'description' => 'Rusak.',
+            ])
+            ->assertSessionHasErrors('asset_id');
+
+        $this->assertSame('available', $asset->fresh()->status);
+    }
+
+    public function test_asset_status_cannot_be_restored_while_a_report_is_open(): void
+    {
+        $item = Item::factory()->create();
+        $asset = Asset::factory()->for($item)->create(['status' => 'damaged']);
+        DamageReport::factory()->forAsset($asset)->create();
+
+        $this->actingAs($this->admin())
+            ->put(route('admin.inventory.assets.update', $asset), [
+                'asset_code' => $asset->asset_code,
+                'condition' => 'good',
+                'status' => 'available',
+            ])
+            ->assertSessionHasErrors('status');
+
+        $this->assertSame('damaged', $asset->fresh()->status);
+    }
+
+    public function test_written_off_serialized_asset_becomes_lost(): void
+    {
+        $item = Item::factory()->create();
+        $asset = Asset::factory()->for($item)->create(['status' => 'available']);
+        $report = DamageReport::factory()->forAsset($asset)->create(['type' => 'loss']);
+
+        $this->actingAs($this->admin())
+            ->put(route('admin.inventory.damage-reports.resolve', $report), ['resolution' => 'written_off'])
+            ->assertRedirect();
+
+        $this->assertSame('lost', $asset->fresh()->status);
+        $this->assertSame('resolved', $report->fresh()->status);
+    }
+
+    public function test_resolve_rejects_an_already_resolved_report(): void
+    {
+        $report = DamageReport::factory()->resolved()->create();
+
+        $this->actingAs($this->admin())
+            ->put(route('admin.inventory.damage-reports.resolve', $report), ['resolution' => 'repaired'])
+            ->assertSessionHasErrors('resolution');
+    }
 }

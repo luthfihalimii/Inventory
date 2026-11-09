@@ -51,42 +51,50 @@ class DamageReportController extends Controller
         Gate::authorize('manage-inventory');
 
         $data = $request->validated();
-        $asset = null;
-        $quantity = null;
 
-        if ($item->tracking_method === 'serialized') {
-            if (empty($data['asset_id'])) {
-                throw ValidationException::withMessages([
-                    'asset_id' => 'Pilih unit yang bermasalah.',
-                ]);
+        DB::transaction(function () use ($request, $item, $data, $audit, $availability): void {
+            $item = Item::whereKey($item->id)->lockForUpdate()->firstOrFail();
+            $before = ['asset_status' => null, 'quantity_total' => $item->quantity_total];
+
+            $asset = null;
+            $quantity = null;
+
+            if ($item->tracking_method === 'serialized') {
+                if (empty($data['asset_id'])) {
+                    throw ValidationException::withMessages(['asset_id' => 'Pilih unit yang bermasalah.']);
+                }
+
+                $asset = Asset::whereKey($data['asset_id'])
+                    ->where('item_id', $item->id)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (! $asset) {
+                    throw ValidationException::withMessages(['asset_id' => 'Unit tidak termasuk barang ini.']);
+                }
+
+                if (in_array($asset->status, ['lost', 'inactive'], true)) {
+                    throw ValidationException::withMessages(['asset_id' => 'Unit sudah hilang atau nonaktif.']);
+                }
+
+                if ($asset->damageReports()->where('status', 'open')->exists()) {
+                    throw ValidationException::withMessages(['asset_id' => 'Unit sudah punya laporan terbuka.']);
+                }
+
+                $before['asset_status'] = $asset->status;
+                $quantity = 1;
+            } else {
+                $quantity = (int) ($data['quantity'] ?? 0);
+
+                if ($quantity < 1) {
+                    throw ValidationException::withMessages(['quantity' => 'Jumlah wajib diisi.']);
+                }
+
+                if ($quantity > $availability->summary($item)['available']) {
+                    throw ValidationException::withMessages(['quantity' => 'Jumlah melebihi stok tersedia.']);
+                }
             }
 
-            $asset = Asset::whereKey($data['asset_id'])->where('item_id', $item->id)->first();
-
-            if (! $asset) {
-                throw ValidationException::withMessages([
-                    'asset_id' => 'Unit tidak termasuk barang ini.',
-                ]);
-            }
-
-            $quantity = 1;
-        } else {
-            $quantity = (int) ($data['quantity'] ?? 0);
-
-            if ($quantity < 1) {
-                throw ValidationException::withMessages([
-                    'quantity' => 'Jumlah wajib diisi.',
-                ]);
-            }
-
-            if ($quantity > $availability->summary($item)['available']) {
-                throw ValidationException::withMessages([
-                    'quantity' => 'Jumlah melebihi stok tersedia.',
-                ]);
-            }
-        }
-
-        $report = DB::transaction(function () use ($request, $item, $asset, $quantity, $data): DamageReport {
             $report = DamageReport::create([
                 'item_id' => $item->id,
                 'asset_id' => $asset?->id,
@@ -102,15 +110,17 @@ class DamageReportController extends Controller
                 $asset->update($this->assetStateFor($data['type']));
             }
 
-            return $report;
+            $audit->record(
+                'damage.reported',
+                $report,
+                ['item_id' => $item->id, 'asset_id' => $asset?->id, 'type' => $data['type'], 'quantity' => $quantity],
+                $before,
+                [
+                    'asset_status' => $asset?->fresh()?->status,
+                    'quantity_total' => $item->fresh()->quantity_total,
+                ],
+            );
         });
-
-        $audit->record('damage.reported', $report, [
-            'item_id' => $item->id,
-            'asset_id' => $asset?->id,
-            'type' => $data['type'],
-            'quantity' => $quantity,
-        ]);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Laporan dibuat.']);
 
@@ -124,40 +134,59 @@ class DamageReportController extends Controller
     ): RedirectResponse {
         Gate::authorize('manage-inventory');
 
-        if ($damageReport->status !== 'open') {
-            throw ValidationException::withMessages([
-                'resolution' => 'Laporan sudah diselesaikan.',
-            ]);
-        }
-
         $resolution = $request->validated('resolution');
 
-        DB::transaction(function () use ($request, $damageReport, $resolution): void {
-            if ($damageReport->asset_id) {
-                $damageReport->asset->update(
+        DB::transaction(function () use ($request, $damageReport, $resolution, $audit): void {
+            $report = DamageReport::whereKey($damageReport->id)->lockForUpdate()->firstOrFail();
+
+            if ($report->status !== 'open') {
+                throw ValidationException::withMessages(['resolution' => 'Laporan sudah diselesaikan.']);
+            }
+
+            $item = Item::whereKey($report->item_id)->lockForUpdate()->firstOrFail();
+
+            $before = [
+                'asset_status' => $report->asset_id ? Asset::whereKey($report->asset_id)->value('status') : null,
+                'quantity_total' => $item->quantity_total,
+            ];
+
+            if ($report->asset_id) {
+                Asset::whereKey($report->asset_id)->update(
                     $resolution === 'repaired'
                         ? ['status' => 'available', 'condition' => 'good']
                         : ['status' => 'lost'],
                 );
             }
 
-            if ($resolution === 'written_off' && $damageReport->item->tracking_method === 'quantity') {
-                $item = $damageReport->item;
-                $item->update([
-                    'quantity_total' => max(0, (int) $item->quantity_total - (int) $damageReport->quantity),
-                ]);
+            if ($resolution === 'written_off' && $item->tracking_method === 'quantity') {
+                if ((int) $report->quantity > (int) $item->quantity_total) {
+                    throw ValidationException::withMessages([
+                        'resolution' => 'Jumlah laporan melebihi stok total.',
+                    ]);
+                }
+
+                $item->update(['quantity_total' => (int) $item->quantity_total - (int) $report->quantity]);
             }
 
-            $damageReport->update([
+            $report->update([
                 'status' => 'resolved',
                 'resolution' => $resolution,
                 'resolution_notes' => $request->validated('resolution_notes'),
                 'resolved_by_user_id' => $request->user()->id,
                 'resolved_at' => now(),
             ]);
-        });
 
-        $audit->record('damage.resolved', $damageReport, ['resolution' => $resolution]);
+            $audit->record(
+                'damage.resolved',
+                $report,
+                ['resolution' => $resolution],
+                $before,
+                [
+                    'asset_status' => $report->asset_id ? Asset::whereKey($report->asset_id)->value('status') : null,
+                    'quantity_total' => $item->fresh()->quantity_total,
+                ],
+            );
+        });
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Laporan diselesaikan.']);
 

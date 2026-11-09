@@ -44,6 +44,15 @@ function applyFilter(): void {
 }
 
 function resolve(report: Report, resolution: 'repaired' | 'written_off'): void {
+    if (
+        resolution === 'written_off' &&
+        !window.confirm(
+            'Hapuskan unit ini? Stok akan dikurangi dan tidak bisa dikembalikan.',
+        )
+    ) {
+        return;
+    }
+
     router.put(
         `/admin/inventory/damage-reports/${report.id}/resolve`,
         { resolution },

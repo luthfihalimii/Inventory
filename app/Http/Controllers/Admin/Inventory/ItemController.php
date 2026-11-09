@@ -42,8 +42,9 @@ class ItemController extends Controller
         $items->through(fn (Item $item) => [
             ...$item->only([
                 'id', 'code', 'name', 'tracking_method', 'quantity_total', 'price',
-                'acquired_at', 'status', 'notes',
+                'status', 'notes',
             ]),
+            'acquired_at' => $item->getRawOriginal('acquired_at'),
             'category' => $item->category?->only(['id', 'name']),
             'location' => $item->location?->only(['id', 'name', 'code']),
             'availability' => $availability->summary($item),
@@ -65,10 +66,8 @@ class ItemController extends Controller
     {
         Gate::authorize('manage-inventory');
 
-        $item = Item::create([
-            ...$request->validated(),
-            'qr_token' => Str::random(40),
-        ]);
+        $item = new Item($request->validated());
+        $item->forceFill(['qr_token' => Str::random(40)])->save();
 
         $audit->record('item.created', $item, ['code' => $item->code]);
 
@@ -124,7 +123,10 @@ class ItemController extends Controller
         return Inertia::render('admin/inventory/items/Qr', [
             'item' => [
                 ...$item->only(['id', 'code', 'name', 'qr_token', 'tracking_method']),
-                'assets' => $item->assets()->orderBy('asset_code')->get(['id', 'asset_code', 'qr_token']),
+                'assets' => $item->assets()
+                    ->whereNotIn('status', ['lost', 'inactive'])
+                    ->orderBy('asset_code')
+                    ->get(['id', 'asset_code', 'qr_token']),
             ],
         ]);
     }

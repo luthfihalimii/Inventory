@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Inventory;
 
 use App\Http\Controllers\Controller;
+use App\Models\Asset;
 use App\Models\Category;
 use App\Models\Item;
 use App\Services\AvailabilityService;
@@ -31,7 +32,7 @@ class CatalogController extends Controller
             ->withQueryString();
 
         $items->through(fn (Item $item) => [
-            ...$item->only(['id', 'code', 'name', 'tracking_method', 'quantity_total', 'status', 'notes']),
+            ...$item->only(['id', 'code', 'name', 'tracking_method', 'quantity_total', 'status']),
             'category' => $item->category?->only(['id', 'name']),
             'location' => $item->location?->only(['id', 'name', 'code']),
             'availability' => $availability->summary($item),
@@ -54,14 +55,18 @@ class CatalogController extends Controller
 
         return Inertia::render('inventory/Show', [
             'item' => [
-                ...$item->only([
-                    'id', 'code', 'name', 'tracking_method', 'quantity_total', 'price',
-                    'acquired_at', 'status', 'notes',
-                ]),
+                ...$item->only(['id', 'code', 'name', 'tracking_method', 'quantity_total', 'status']),
+                'price' => $canManage ? $item->price : null,
+                'acquired_at' => $canManage ? $item->getRawOriginal('acquired_at') : null,
+                'notes' => $canManage ? $item->notes : null,
                 'category' => $item->category?->only(['id', 'name']),
                 'location' => $item->location?->only(['id', 'name', 'code']),
                 'assets' => $item->tracking_method === 'serialized'
                     ? $item->assets()->orderBy('asset_code')->get(['id', 'asset_code', 'serial_number', 'condition', 'status'])
+                        ->map(fn (Asset $asset) => [
+                            ...$asset->only(['id', 'asset_code', 'condition', 'status']),
+                            'serial_number' => $canManage ? $asset->serial_number : null,
+                        ])
                     : [],
             ],
             'availability' => $availability->summary($item),

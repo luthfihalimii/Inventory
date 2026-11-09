@@ -73,6 +73,15 @@ class AssetController extends Controller
         $data = $request->validated();
         unset($data['item_id']);
 
+        if (
+            in_array($data['status'], ['available', 'borrowed'], true)
+            && $asset->damageReports()->where('status', 'open')->exists()
+        ) {
+            throw ValidationException::withMessages([
+                'status' => 'Unit punya laporan terbuka; selesaikan laporan dulu.',
+            ]);
+        }
+
         $before = $asset->only(['asset_code', 'serial_number', 'condition', 'status', 'notes']);
 
         $asset->update($data);
