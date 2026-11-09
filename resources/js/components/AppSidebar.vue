@@ -1,6 +1,15 @@
 <script setup lang="ts">
-import { Link } from '@inertiajs/vue3';
-import { BookOpen, FolderGit2, LayoutGrid } from '@lucide/vue';
+import { Link, usePage } from '@inertiajs/vue3';
+import {
+    BookOpen,
+    Building2,
+    FolderGit2,
+    LayoutGrid,
+    ScrollText,
+    Users,
+    UsersRound,
+} from '@lucide/vue';
+import { computed } from 'vue';
 import AppLogo from '@/components/AppLogo.vue';
 import NavFooter from '@/components/NavFooter.vue';
 import NavMain from '@/components/NavMain.vue';
@@ -17,12 +26,26 @@ import {
 import { dashboard } from '@/routes';
 import type { NavItem } from '@/types';
 
+const page = usePage();
+const isWm = computed(() =>
+    (
+        (page.props.auth?.user as { roles?: string[] } | null)?.roles ?? []
+    ).includes('wm'),
+);
+
 const mainNavItems: NavItem[] = [
     {
         title: 'Dashboard',
         href: dashboard(),
         icon: LayoutGrid,
     },
+];
+
+const wmNavItems: NavItem[] = [
+    { title: 'Anggota', href: '/wm/members', icon: Users },
+    { title: 'Divisi', href: '/wm/divisions', icon: Building2 },
+    { title: 'Akun', href: '/wm/accounts', icon: UsersRound },
+    { title: 'Audit', href: '/wm/audit', icon: ScrollText },
 ];
 
 const footerNavItems: NavItem[] = [
@@ -55,6 +78,7 @@ const footerNavItems: NavItem[] = [
 
         <SidebarContent>
             <NavMain :items="mainNavItems" />
+            <NavMain v-if="isWm" :items="wmNavItems" />
         </SidebarContent>
 
         <SidebarFooter>

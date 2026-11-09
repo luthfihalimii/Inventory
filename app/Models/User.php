@@ -67,4 +67,28 @@ class User extends Authenticatable
     {
         return $this->belongsToMany(Role::class);
     }
+
+    public function hasRole(string $role): bool
+    {
+        return $this->roles()->where('name', $role)->exists();
+    }
+
+    /**
+     * @param  list<string>  $roles
+     */
+    public function hasAnyRole(array $roles): bool
+    {
+        return $this->roles()->whereIn('name', $roles)->exists();
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function roleNames(): array
+    {
+        return array_values(array_map(
+            fn (mixed $name): string => (string) $name,
+            $this->roles()->pluck('name')->all(),
+        ));
+    }
 }
