@@ -1,0 +1,70 @@
+name: tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_DB: ent_inventory_test
+          POSTGRES_USER: ent_inventory
+          POSTGRES_PASSWORD: ent_inventory
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U ent_inventory"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DB_CONNECTION: pgsql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5433
+      DB_DATABASE: ent_inventory_test
+      DB_USERNAME: ent_inventory
+      DB_PASSWORD: ent_inventory
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
+        with:
+          php-version: '8.5'
+          tools: composer:v2
+          coverage: none
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Prepare application
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Install frontend dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Run CI checks
+        run: composer ci:check
+
+      - name: Build frontend
+        run: bun run build

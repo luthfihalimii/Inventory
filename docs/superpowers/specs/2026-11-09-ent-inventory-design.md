@@ -105,7 +105,7 @@ Sistem dinyatakan gagal jika:
 | RBAC | Tabel `roles` + `role_user` + Laravel Policies/Gates (tanpa package tambahan) |
 | QR generate | `simplesoftwareio/simple-qrcode` |
 | QR scan | `vue-qrcode-reader` + input manual |
-| Testing | Pest (feature/unit) + Playwright (alur kritis) |
+| Testing | PHPUnit 12 (feature/unit) + Playwright (alur kritis) |
 | Queue | Database driver; worker container |
 | Scheduler | Laravel scheduler via container/cron |
 | Deployment | Docker Compose + Nginx + PHP-FPM + PostgreSQL |
@@ -858,7 +858,7 @@ Estimasi kasar untuk satu fullstack developer; bisa diparalelkan.
 - Finalisasi keputusan §10.
 - Scaffold Laravel + Inertia + Vue + Tailwind.
 - Docker Compose: app, nginx, postgres, queue worker, scheduler.
-- CI: Pint, Pest, build frontend.
+- CI: Pint, PHPStan, PHPUnit, build frontend (Bun).
 - Migration identitas + inventaris awal; seeder role/divisi/kategori/lokasi.
 - Setup private storage dan signed URL.
 
