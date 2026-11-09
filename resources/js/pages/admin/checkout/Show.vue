@@ -136,6 +136,19 @@ async function scan(): Promise<void> {
                 body: JSON.stringify({ token: scanToken.value.trim() }),
             },
         );
+
+        if (
+            !response.ok &&
+            response.headers.get('content-type')?.includes('json') !== true
+        ) {
+            scanMessage.value = {
+                ok: false,
+                text: 'Scan gagal (sesi berakhir?). Muat ulang halaman.',
+            };
+
+            return;
+        }
+
         const data = (await response.json()) as ScanResponse;
 
         if (!response.ok || !data.valid) {
@@ -168,7 +181,9 @@ async function scan(): Promise<void> {
             };
         } else if (data.type === 'item') {
             entry.delivered = true;
-            entry.quantity = data.quantity ?? entry.quantity;
+            // Only prefill from the scan; never overwrite a quantity the officer typed.
+            entry.quantity =
+                entry.quantity > 0 ? entry.quantity : (data.quantity ?? 1);
             scanMessage.value = {
                 ok: true,
                 text: `${data.item?.name ?? 'Barang'} cocok.`,

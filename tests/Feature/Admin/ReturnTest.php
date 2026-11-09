@@ -243,6 +243,35 @@ class ReturnTest extends TestCase
         $this->assertSame('completed', $loan->fresh()->status);
     }
 
+    public function test_good_return_keeps_unit_out_when_an_open_report_exists(): void
+    {
+        $item = Item::factory()->create();
+        [$loan, $creator] = $this->borrowedLoan($item, 1);
+        $returnRequest = $this->pendingReturn($loan, $creator);
+        $loanItem = $loan->items()->firstOrFail();
+
+        DamageReport::factory()->create([
+            'item_id' => $item->id,
+            'asset_id' => $loanItem->asset_id,
+            'status' => 'open',
+            'type' => 'damage',
+        ]);
+
+        $this->actingAs($this->userWithRole('admin_korlab'))
+            ->post(route('admin.returns.verify', $returnRequest), [
+                'items' => [
+                    [
+                        'loan_item_id' => $loanItem->id,
+                        'condition' => 'good',
+                        'quantity_returned' => 1,
+                    ],
+                ],
+            ])
+            ->assertRedirect();
+
+        $this->assertSame('maintenance', Asset::whereKey($loanItem->asset_id)->value('status'));
+    }
+
     public function test_only_admin_can_verify_returns(): void
     {
         $item = Item::factory()->quantity()->create(['quantity_total' => 5]);

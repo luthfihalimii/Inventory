@@ -348,7 +348,10 @@ class CheckoutController extends Controller
                 'scan_results' => $scanResults,
                 'borrower_confirmation_method' => 'on_site',
                 'borrower_confirmed_at' => now(),
-                'notes' => $notes,
+                // Spec §7.4: partial checkout and unit swaps require a recorded reason.
+                'notes' => $reason === null
+                    ? $notes
+                    : trim("Alasan: {$reason}".($notes === null ? '' : "\n{$notes}")),
             ]);
 
             $loan->update(['status' => 'borrowed', 'checked_out_at' => now()]);

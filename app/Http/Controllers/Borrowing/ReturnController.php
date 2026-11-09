@@ -16,10 +16,15 @@ class ReturnController extends Controller
 {
     public function store(Request $request, LoanTransaction $loanTransaction, AuditLogger $audit): RedirectResponse
     {
-        abort_unless(
-            $loanTransaction->borrowRequest()->where('created_by_user_id', $request->user()->id)->exists(),
-            403,
-        );
+        // Either the member the units were issued to, or whoever filed the request on their behalf.
+        $user = $request->user();
+
+        $isBorrower = $user->member_id === $loanTransaction->member_id;
+        $isCreator = $loanTransaction->borrowRequest()
+            ->where('created_by_user_id', $user->id)
+            ->exists();
+
+        abort_unless($isBorrower || $isCreator, 403);
 
         $data = $request->validate([
             'notes' => ['nullable', 'string', 'max:2000'],

@@ -51,7 +51,8 @@ class AvailabilityService
             ->where('start_at', '<', $end)
             ->where('end_at', '>', $start)
             ->sum('quantity');
-        $borrowed = $this->outstandingLoanQuantity($item, $start, $end);
+        // Real-time stock: overdue loans are still physically out, so no due_at cut-off here.
+        $borrowed = $this->currentOutstandingLoanQuantity($item);
 
         return [
             'total' => $total,
@@ -99,7 +100,10 @@ class AvailabilityService
                 ->whereHas('loanTransaction', fn ($query) => $query
                     ->whereIn('status', ['borrowed', 'overdue', 'return_pending_verification'])
                     ->where(fn ($query) => $query->whereNull('checked_out_at')->orWhere('checked_out_at', '<', $end))
-                    ->where(fn ($query) => $query->whereNull('due_at')->orWhere('due_at', '>', $start)))
+                    // Overdue units are still physically out: they stay blocked whatever the requested period.
+                    ->where(fn ($query) => $query
+                        ->where('status', 'overdue')
+                        ->orWhere(fn ($query) => $query->whereNull('due_at')->orWhere('due_at', '>', $start))))
                 ->pluck('asset_id');
 
             return $item->assets()
@@ -130,7 +134,22 @@ class AvailabilityService
             ->whereHas('loanTransaction', fn ($query) => $query
                 ->whereIn('status', ['borrowed', 'overdue', 'return_pending_verification'])
                 ->where(fn ($query) => $query->whereNull('checked_out_at')->orWhere('checked_out_at', '<', $end))
-                ->where(fn ($query) => $query->whereNull('due_at')->orWhere('due_at', '>', $start)))
+                // Overdue units are still physically out: they stay blocked whatever the requested period.
+                ->where(fn ($query) => $query
+                    ->where('status', 'overdue')
+                    ->orWhere(fn ($query) => $query->whereNull('due_at')->orWhere('due_at', '>', $start))))
+            ->sum('quantity');
+    }
+
+    /**
+     * Units currently out with a member, including overdue loans.
+     */
+    private function currentOutstandingLoanQuantity(Item $item): int
+    {
+        return (int) LoanItem::query()
+            ->where('item_id', $item->id)
+            ->whereHas('loanTransaction', fn ($query) => $query
+                ->whereIn('status', ['borrowed', 'overdue', 'return_pending_verification']))
             ->sum('quantity');
     }
 }

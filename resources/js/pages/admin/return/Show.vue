@@ -72,17 +72,32 @@ const itemsError = computed(
     () => (form.errors as Record<string, string>).items,
 );
 
-function addRow(): void {
-    const first = props.request.items[0];
+function remainingFor(loanItemId: number): number {
+    const item = props.request.items.find((entry) => entry.id === loanItemId);
+    const used = form.items
+        .filter((row) => row.loan_item_id === loanItemId)
+        .reduce(
+            (total, row) => total + (Number(row.quantity_returned) || 0),
+            0,
+        );
 
-    if (!first) {
+    return Math.max(0, (item?.quantity ?? 0) - used);
+}
+
+function addRow(): void {
+    // Point the new row at the first item that still has quantity left to account for.
+    const target = props.request.items.find(
+        (item) => remainingFor(item.id) > 0,
+    );
+
+    if (!target) {
         return;
     }
 
     form.items.push({
-        loan_item_id: first.id,
+        loan_item_id: target.id,
         condition: 'good',
-        quantity_returned: 1,
+        quantity_returned: remainingFor(target.id),
         notes: '',
     });
 }
@@ -211,8 +226,8 @@ const conditionLabel: Record<string, string> = {
             <p class="font-medium">Hasil inspeksi</p>
             <ul class="mt-2 grid gap-1">
                 <li
-                    v-for="row in request.inspection"
-                    :key="`${row.loan_item_id}-${row.condition}`"
+                    v-for="(row, index) in request.inspection"
+                    :key="`${row.loan_item_id}-${row.condition}-${index}`"
                 >
                     {{ row.quantity_returned }} ×
                     {{ conditionLabel[row.condition] ?? row.condition }}

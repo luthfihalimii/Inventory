@@ -177,6 +177,8 @@ class ReturnController extends Controller
                     (int) $row['quantity_returned'],
                     $loan,
                     $user->id,
+                    $audit,
+                    $row['notes'],
                 );
             }
 
@@ -186,7 +188,14 @@ class ReturnController extends Controller
             $audit->record(
                 'return.verified',
                 $locked,
-                ['loan_transaction_id' => $loan->id, 'items' => count($rows)],
+                [
+                    'loan_transaction_id' => $loan->id,
+                    'items' => array_map(fn (array $row) => [
+                        'loan_item_id' => $row['loan_item_id'],
+                        'condition' => $row['condition'],
+                        'quantity' => $row['quantity_returned'],
+                    ], $rows),
+                ],
                 ['status' => 'pending'],
                 ['status' => 'verified'],
             );
@@ -250,22 +259,34 @@ class ReturnController extends Controller
         int $quantity,
         LoanTransaction $loan,
         int $officerUserId,
+        AuditLogger $audit,
+        ?string $notes = null,
     ): void {
         if ($loanItem->asset_id) {
             $asset = Asset::whereKey($loanItem->asset_id)->lockForUpdate()->firstOrFail();
 
+            if ($condition === 'good') {
+                // A unit reported damaged from the inventory screen must not become bookable again
+                // just because it came back in one piece.
+                $hasOpenReport = DamageReport::query()
+                    ->where('asset_id', $asset->id)
+                    ->where('status', 'open')
+                    ->exists();
+
+                $asset->update($hasOpenReport
+                    ? ['status' => 'maintenance']
+                    : ['status' => 'available', 'condition' => 'good']);
+
+                return;
+            }
+
             $asset->update(match ($condition) {
-                'good' => ['status' => 'available', 'condition' => 'good'],
                 'damaged' => ['status' => 'damaged', 'condition' => 'damaged'],
                 'lost' => ['status' => 'lost', 'condition' => 'damaged'],
                 default => ['status' => 'maintenance', 'condition' => 'damaged'],
             });
 
-            if ($condition === 'good') {
-                return;
-            }
-
-            $this->openDamageReport($loan, $loanItem, $condition, 1, $asset->id, $officerUserId);
+            $this->openDamageReport($loan, $loanItem, $condition, 1, $asset->id, $officerUserId, $audit, $notes);
 
             return;
         }
@@ -274,7 +295,7 @@ class ReturnController extends Controller
             return;
         }
 
-        $this->openDamageReport($loan, $loanItem, $condition, $quantity, null, $officerUserId);
+        $this->openDamageReport($loan, $loanItem, $condition, $quantity, null, $officerUserId, $audit, $notes);
     }
 
     private function openDamageReport(
@@ -284,8 +305,10 @@ class ReturnController extends Controller
         int $quantity,
         ?int $assetId,
         int $officerUserId,
+        AuditLogger $audit,
+        ?string $notes = null,
     ): void {
-        DamageReport::create([
+        $report = DamageReport::create([
             'loan_transaction_id' => $loan->id,
             'loan_item_id' => $loanItem->id,
             'item_id' => $loanItem->item_id,
@@ -297,10 +320,21 @@ class ReturnController extends Controller
                 default => 'damage',
             },
             'quantity' => $quantity,
-            'description' => "Inspeksi pengembalian: kondisi {$condition}.",
+            'description' => trim("Inspeksi pengembalian: kondisi {$condition}. ".($notes ?? '')),
             'status' => 'open',
             'reported_by_user_id' => $officerUserId,
             'reported_at' => now(),
         ]);
+
+        $audit->record(
+            'damage.reported',
+            $report,
+            [
+                'item_id' => $loanItem->item_id,
+                'asset_id' => $assetId,
+                'quantity' => $quantity,
+                'condition' => $condition,
+            ],
+        );
     }
 }

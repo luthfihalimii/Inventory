@@ -192,6 +192,28 @@ class CheckoutTest extends TestCase
 
         $this->assertSame('released', $reservations[1]->fresh()->status);
         $this->assertSame(1, LoanItem::where('loan_transaction_id', $loan->id)->count());
+        $this->assertStringContainsString('Satu unit dipakai kegiatan lain.', $loan->handover()->firstOrFail()->notes ?? '');
+    }
+
+    public function test_duplicate_reservation_lines_are_rejected(): void
+    {
+        $item = Item::factory()->quantity()->create(['quantity_total' => 5]);
+        [$loan] = $this->approvedLoan($item, 2);
+        $reservation = $loan->borrowRequest->reservations()->firstOrFail();
+        $line = [
+            'reservation_id' => $reservation->id,
+            'quantity' => 1,
+            'condition_out' => 'good',
+        ];
+
+        $this->actingAs($this->admin())
+            ->post(route('admin.checkout.store', $loan), [
+                'lines' => [$line, $line],
+                'reason' => 'Duplikat.',
+            ])
+            ->assertSessionHasErrors('lines.0.reservation_id');
+
+        $this->assertSame('reserved', $loan->fresh()->status);
     }
 
     public function test_unit_swap_moves_the_reservation_to_the_new_asset(): void

@@ -158,6 +158,37 @@ class AvailabilityServiceTest extends TestCase
         ]);
     }
 
+    public function test_summary_counts_overdue_loans_as_borrowed(): void
+    {
+        $item = Item::factory()->quantity()->create(['quantity_total' => 5]);
+
+        $member = Member::factory()->create();
+        $request = BorrowRequest::factory()->approved()->create([
+            'member_id' => $member->id,
+            'created_by_user_id' => User::factory()->create(['member_id' => $member->id])->id,
+        ]);
+
+        $loan = LoanTransaction::factory()->create([
+            'borrow_request_id' => $request->id,
+            'member_id' => $member->id,
+            'status' => 'overdue',
+            'checked_out_at' => now()->subDays(10),
+            'due_at' => now()->subDays(3),
+        ]);
+
+        LoanItem::factory()->create([
+            'loan_transaction_id' => $loan->id,
+            'item_id' => $item->id,
+            'asset_id' => null,
+            'quantity' => 2,
+        ]);
+
+        $summary = app(AvailabilityService::class)->summary($item);
+
+        $this->assertSame(2, $summary['borrowed']);
+        $this->assertSame(3, $summary['available']);
+    }
+
     private function reserve(
         Item $item,
         int $quantity,

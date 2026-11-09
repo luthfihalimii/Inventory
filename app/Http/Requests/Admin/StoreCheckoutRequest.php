@@ -15,7 +15,7 @@ class StoreCheckoutRequest extends FormRequest
     {
         return [
             'lines' => ['required', 'array', 'min:1', 'max:50'],
-            'lines.*.reservation_id' => ['required', 'integer'],
+            'lines.*.reservation_id' => ['required', 'integer', 'distinct'],
             'lines.*.asset_id' => ['nullable', 'integer'],
             'lines.*.quantity' => ['required', 'integer', 'min:1', 'max:1000'],
             'lines.*.condition_out' => ['required', Rule::in(['good', 'damaged'])],
