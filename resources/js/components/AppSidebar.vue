@@ -78,7 +78,7 @@ const footerNavItems: NavItem[] = [
 
         <SidebarContent>
             <NavMain :items="mainNavItems" />
-            <NavMain v-if="isWm" :items="wmNavItems" />
+            <NavMain v-if="isWm" :items="wmNavItems" label="Manajemen" />
         </SidebarContent>
 
         <SidebarFooter>

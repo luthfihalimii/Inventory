@@ -12,7 +12,8 @@ class AuditLogController extends Controller
 {
     public function index(Request $request): Response
     {
-        $action = $request->string('action')->trim()->toString();
+        $action = $request->input('action');
+        $action = is_string($action) ? trim($action) : '';
 
         return Inertia::render('wm/audit/Index', [
             'logs' => AuditLog::query()

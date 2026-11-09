@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, router } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
 import { ref } from 'vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -109,7 +109,7 @@ function search(): void {
                     :variant="link.active ? 'default' : 'outline'"
                     as-child
                 >
-                    <a :href="link.url" v-html="link.label" />
+                    <Link :href="link.url" v-html="link.label" />
                 </Button>
                 <span
                     v-else

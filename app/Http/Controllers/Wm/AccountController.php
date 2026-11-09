@@ -12,6 +12,7 @@ use App\Models\Role;
 use App\Models\User;
 use App\Services\AuditLogger;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -54,7 +55,9 @@ class AccountController extends Controller
             'role' => $request->validated('role'),
         ]);
 
-        return back()->with('success', 'Akun dibuat.');
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Akun dibuat.']);
+
+        return back();
     }
 
     public function updateRole(AccountRoleRequest $request, User $account, AuditLogger $audit): RedirectResponse
@@ -75,7 +78,9 @@ class AccountController extends Controller
 
         $audit->record('account.roles_updated', $account, [], ['roles' => $before], ['roles' => [$role]]);
 
-        return back()->with('success', 'Role diperbarui.');
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Role diperbarui.']);
+
+        return back();
     }
 
     public function updatePassword(AccountPasswordRequest $request, User $account, AuditLogger $audit): RedirectResponse
@@ -89,7 +94,9 @@ class AccountController extends Controller
 
         $audit->record('account.password_reset', $account, ['username' => $account->username]);
 
-        return back()->with('success', 'Password direset.');
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Password direset.']);
+
+        return back();
     }
 
     public function updateStatus(AccountStatusRequest $request, User $account, AuditLogger $audit): RedirectResponse
@@ -116,9 +123,16 @@ class AccountController extends Controller
 
         $account->update(['status' => $status]);
 
+        if ($status === 'inactive') {
+            $account->forceFill(['remember_token' => null])->saveQuietly();
+            DB::table('sessions')->where('user_id', $account->id)->delete();
+        }
+
         $audit->record('account.status_updated', $account, [], ['status' => $before], ['status' => $status]);
 
-        return back()->with('success', 'Status akun diperbarui.');
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Status akun diperbarui.']);
+
+        return back();
     }
 
     private function isLastActiveWm(User $account): bool

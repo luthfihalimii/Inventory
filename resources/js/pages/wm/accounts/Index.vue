@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { Head, router, useForm } from '@inertiajs/vue3';
-import { reactive } from 'vue';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
+import { computed, reactive } from 'vue';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -46,6 +46,11 @@ const form = useForm({
     role: 'user' as Role,
     password: '',
 });
+
+const page = usePage();
+const pageErrors = computed(
+    () => (page.props.errors ?? {}) as Record<string, string>,
+);
 
 const resetPasswords = reactive<Record<number, string>>({});
 
@@ -202,6 +207,10 @@ function resetPassword(account: Account): void {
                                     {{ role }}
                                 </option>
                             </select>
+                            <InputError
+                                :message="pageErrors.role"
+                                class="mt-1"
+                            />
                         </td>
                         <td class="p-3">
                             <Button
@@ -219,6 +228,10 @@ function resetPassword(account: Account): void {
                                         : 'Aktifkan'
                                 }}
                             </Button>
+                            <InputError
+                                :message="pageErrors.status"
+                                class="mt-1"
+                            />
                         </td>
                         <td class="p-3">
                             <div class="flex gap-2">
@@ -255,7 +268,7 @@ function resetPassword(account: Account): void {
                     :variant="link.active ? 'default' : 'outline'"
                     as-child
                 >
-                    <a :href="link.url" v-html="link.label" />
+                    <Link :href="link.url" v-html="link.label" />
                 </Button>
                 <span
                     v-else

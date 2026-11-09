@@ -5,5 +5,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware('auth')->group(function () {
     Route::get('password/change', [PasswordChangeController::class, 'edit'])->name('password.change');
-    Route::put('password/change', [PasswordChangeController::class, 'update'])->name('password.change.store');
+    Route::put('password/change', [PasswordChangeController::class, 'update'])
+        ->middleware('throttle:6,1')
+        ->name('password.change.store');
 });

@@ -29,7 +29,9 @@ class DivisionController extends Controller
 
         $audit->record('division.created', $division, ['code' => $division->code]);
 
-        return back()->with('success', 'Divisi dibuat.');
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Divisi dibuat.']);
+
+        return back();
     }
 
     public function update(DivisionRequest $request, Division $division, AuditLogger $audit): RedirectResponse
@@ -42,6 +44,8 @@ class DivisionController extends Controller
 
         $audit->record('division.updated', $division, [], $before, $division->only(['name', 'code']));
 
-        return back()->with('success', 'Divisi diperbarui.');
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Divisi diperbarui.']);
+
+        return back();
     }
 }

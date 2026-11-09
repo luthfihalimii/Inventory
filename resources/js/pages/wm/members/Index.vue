@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, router, useForm } from '@inertiajs/vue3';
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { ref } from 'vue';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
@@ -176,6 +176,12 @@ function submit(): void {
             </div>
 
             <div class="grid gap-2">
+                <Label for="notes">Catatan</Label>
+                <Input id="notes" v-model="form.notes" />
+                <InputError :message="form.errors.notes" />
+            </div>
+
+            <div class="grid gap-2">
                 <Label for="membership_status">Status keanggotaan</Label>
                 <select
                     id="membership_status"
@@ -270,7 +276,7 @@ function submit(): void {
                     :variant="link.active ? 'default' : 'outline'"
                     as-child
                 >
-                    <a :href="link.url" v-html="link.label" />
+                    <Link :href="link.url" v-html="link.label" />
                 </Button>
                 <span
                     v-else

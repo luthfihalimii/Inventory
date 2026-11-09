@@ -6,6 +6,7 @@ use App\Models\AuditLog;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\AuditLogger;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use LogicException;
 use Tests\TestCase;
@@ -26,6 +27,8 @@ class AuditLogTest extends TestCase
 
         $log = AuditLog::where('action', 'auth.login')->firstOrFail();
 
+        $this->assertSame(1, AuditLog::where('action', 'auth.login')->count());
+
         $this->assertSame($user->id, $log->actor_user_id);
         $this->assertSame($user->member_id, $log->actor_member_id);
         $this->assertSame('user', $log->actor_role);
@@ -39,6 +42,8 @@ class AuditLogTest extends TestCase
         ]);
 
         $log = AuditLog::where('action', 'auth.login_failed')->firstOrFail();
+
+        $this->assertSame(1, AuditLog::where('action', 'auth.login_failed')->count());
 
         $this->assertNull($log->actor_user_id);
         $this->assertSame('ghost', $log->metadata['username']);
@@ -84,5 +89,32 @@ class AuditLogTest extends TestCase
         $this->expectException(LogicException::class);
 
         $log->delete();
+    }
+
+    public function test_audit_log_cannot_be_mass_deleted(): void
+    {
+        AuditLog::create(['action' => 'test', 'created_at' => now()]);
+
+        $this->expectException(QueryException::class);
+
+        AuditLog::query()->delete();
+    }
+
+    public function test_audit_log_cannot_be_quietly_updated(): void
+    {
+        $log = AuditLog::create(['action' => 'test', 'created_at' => now()]);
+
+        $this->expectException(QueryException::class);
+
+        $log->forceFill(['action' => 'tampered'])->saveQuietly();
+    }
+
+    public function test_audit_log_cannot_be_quietly_deleted(): void
+    {
+        $log = AuditLog::create(['action' => 'test', 'created_at' => now()]);
+
+        $this->expectException(QueryException::class);
+
+        $log->deleteQuietly();
     }
 }

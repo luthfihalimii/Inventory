@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Form, Head } from '@inertiajs/vue3';
+import { Form, Head, router } from '@inertiajs/vue3';
 import PasswordChangeController from '@/actions/App/Http/Controllers/Auth/PasswordChangeController';
 import InputError from '@/components/InputError.vue';
 import PasswordInput from '@/components/PasswordInput.vue';
@@ -11,6 +11,10 @@ type Props = {
 };
 
 defineProps<Props>();
+
+function logout(): void {
+    router.post('/logout');
+}
 
 defineOptions({
     layout: {
@@ -68,6 +72,10 @@ defineOptions({
 
         <Button type="submit" class="w-full" :disabled="processing">
             Simpan password
+        </Button>
+
+        <Button type="button" variant="outline" class="w-full" @click="logout">
+            Keluar
         </Button>
     </Form>
 </template>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, useForm } from '@inertiajs/vue3';
+import { Head, Link, useForm } from '@inertiajs/vue3';
 import { ref } from 'vue';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
@@ -154,7 +154,7 @@ function submit(): void {
                     :variant="link.active ? 'default' : 'outline'"
                     as-child
                 >
-                    <a :href="link.url" v-html="link.label" />
+                    <Link :href="link.url" v-html="link.label" />
                 </Button>
                 <span
                     v-else

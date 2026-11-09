@@ -134,6 +134,34 @@ class AccountManagementTest extends TestCase
         $this->assertTrue($wm->fresh()->hasRole('wm'));
     }
 
+    public function test_created_usernames_are_lowercased(): void
+    {
+        $this->actingAs($this->wm())
+            ->post(route('wm.accounts.store'), [
+                'username' => 'Budi',
+                'member_id' => Member::factory()->create()->id,
+                'role' => 'user',
+                'password' => 'new-password-123',
+            ])
+            ->assertRedirect();
+
+        $this->assertNotNull(User::where('username', 'budi')->first());
+    }
+
+    public function test_deactivated_account_cannot_use_an_existing_session(): void
+    {
+        $wm = $this->wm();
+        $target = $this->userWithRole('user');
+
+        $this->actingAs($wm)
+            ->put(route('wm.accounts.status.update', $target), ['status' => 'inactive'])
+            ->assertRedirect();
+
+        $this->actingAs($target->refresh())
+            ->get(route('dashboard'))
+            ->assertRedirect(route('login'));
+    }
+
     public function test_wm_can_deactivate_another_account(): void
     {
         $target = $this->userWithRole('user');

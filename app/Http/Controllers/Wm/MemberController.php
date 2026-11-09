@@ -18,7 +18,8 @@ class MemberController extends Controller
     {
         $this->authorize('manage', Member::class);
 
-        $search = $request->string('q')->trim()->toString();
+        $search = $request->input('q');
+        $search = is_string($search) ? trim($search) : '';
 
         $members = Member::query()
             ->with('division')
@@ -44,14 +45,18 @@ class MemberController extends Controller
 
         $audit->record('member.created', $member, ['nrp' => $member->nrp]);
 
-        return back()->with('success', 'Anggota dibuat.');
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Anggota dibuat.']);
+
+        return back();
     }
 
     public function update(MemberRequest $request, Member $member, AuditLogger $audit): RedirectResponse
     {
         $this->authorize('manage', Member::class);
 
-        $before = $member->only(['name', 'membership_status', 'borrowing_status', 'division_id']);
+        $fields = ['member_code', 'name', 'nrp', 'division_id', 'generation', 'position', 'notes', 'membership_status', 'borrowing_status'];
+
+        $before = $member->only($fields);
 
         $member->update($request->validated());
 
@@ -60,9 +65,11 @@ class MemberController extends Controller
             $member,
             ['nrp' => $member->nrp],
             $before,
-            $member->only(['name', 'membership_status', 'borrowing_status', 'division_id']),
+            $member->only($fields),
         );
 
-        return back()->with('success', 'Anggota diperbarui.');
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Anggota diperbarui.']);
+
+        return back();
     }
 }
