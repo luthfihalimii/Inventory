@@ -288,7 +288,7 @@ function formatDate(value: string | null): string {
                     <p class="mb-2 text-sm font-medium">{{ month.label }}</p>
                     <div
                         class="grid grid-cols-7 gap-1 text-center text-xs"
-                        role="grid"
+                        role="group"
                         :aria-label="month.label"
                     >
                         <span
@@ -323,6 +323,7 @@ function formatDate(value: string | null): string {
                                     day.level === 'full',
                             }"
                             :title="`${day.busy} unit terpakai`"
+                            :aria-label="`${day.day} ${month.label}: ${day.busy} unit terpakai`"
                         >
                             {{ day.day }}
                         </span>

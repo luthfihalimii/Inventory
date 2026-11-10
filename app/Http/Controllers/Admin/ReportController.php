@@ -98,7 +98,7 @@ class ReportController extends Controller
             ),
             'audit' => $this->csv(
                 "laporan-audit-{$from->toDateString()}-{$to->toDateString()}.csv",
-                ['ID', 'Waktu', 'Pelaku', 'Role', 'Tindakan', 'Entitas', 'Entitas ID', 'IP'],
+                ['ID', 'Waktu', 'Pelaku (user ID)', 'Role', 'Tindakan', 'Entitas', 'Entitas ID', 'IP'],
                 $this->auditQuery($from, $to),
                 fn (AuditLog $log): array => [
                     $log->id,
