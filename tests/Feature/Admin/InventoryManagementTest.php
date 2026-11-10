@@ -251,7 +251,28 @@ class InventoryManagementTest extends TestCase
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('admin/inventory/items/Qr')
-                ->where('item.qr_token', $item->qr_token));
+                ->where('items.0.qr_token', $item->qr_token));
+    }
+
+    public function test_admin_can_print_multiple_qr_labels(): void
+    {
+        $first = Item::factory()->create(['name' => 'AAA Kamera']);
+        $second = Item::factory()->quantity()->create(['name' => 'ZZZ Tripod']);
+        Asset::factory()->for($first)->create(['asset_code' => 'UNIT-1']);
+
+        $this->actingAs($this->admin())
+            ->get(route('admin.inventory.items.qr.batch', [
+                'ids' => [$first->id, $second->id],
+            ]))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('admin/inventory/items/Qr')
+                ->has('items', 2)
+                ->has('items.0.assets', 1));
+
+        $this->actingAs($this->userWithRole('user'))
+            ->get(route('admin.inventory.items.qr.batch', ['ids' => [$first->id]]))
+            ->assertForbidden();
     }
 
     public function test_non_admin_cannot_write_inventory(): void

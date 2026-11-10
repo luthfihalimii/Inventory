@@ -10,6 +10,7 @@ use App\Models\Item;
 use App\Models\LoanItem;
 use App\Models\LoanTransaction;
 use App\Models\Member;
+use App\Models\MemberBorrowingBlock;
 use App\Models\ReturnInspection;
 use App\Models\ReturnRequest;
 use App\Models\Role;
@@ -196,10 +197,68 @@ class ReturnTest extends TestCase
         $this->assertSame(3, app(AvailabilityService::class)->summary($item)['available']);
     }
 
-    public function test_total_returned_must_match_the_loan_item(): void
+    public function test_partial_return_keeps_the_loan_open_until_everything_is_back(): void
     {
         $item = Item::factory()->quantity()->create(['quantity_total' => 5]);
         [$loan, $creator] = $this->borrowedLoan($item, 2);
+        $returnRequest = $this->pendingReturn($loan, $creator);
+        $loanItem = $loan->items()->firstOrFail();
+
+        $admin = $this->userWithRole('admin_korlab');
+
+        $this->actingAs($admin)
+            ->post(route('admin.returns.verify', $returnRequest), [
+                'items' => [
+                    [
+                        'loan_item_id' => $loanItem->id,
+                        'condition' => 'good',
+                        'quantity_returned' => 1,
+                    ],
+                ],
+            ])
+            ->assertRedirect();
+
+        $this->assertSame('verified', $returnRequest->fresh()->status);
+        $this->assertSame('borrowed', $loan->fresh()->status);
+        $this->assertSame(1, $loanItem->fresh()->quantity_returned);
+        $this->assertNull($loan->fresh()->completed_at);
+
+        $second = ReturnRequest::factory()->create([
+            'loan_transaction_id' => $loan->id,
+            'requested_by_user_id' => $creator->id,
+        ]);
+        $loan->refresh()->update(['status' => 'return_pending_verification']);
+
+        $this->actingAs($admin)
+            ->post(route('admin.returns.verify', $second), [
+                'items' => [
+                    [
+                        'loan_item_id' => $loanItem->id,
+                        'condition' => 'good',
+                        'quantity_returned' => 1,
+                    ],
+                ],
+            ])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(2, $loanItem->fresh()->quantity_returned);
+        $this->assertSame('completed', $loan->fresh()->status);
+    }
+
+    public function test_partial_return_keeps_the_overdue_block_active(): void
+    {
+        $item = Item::factory()->quantity()->create(['quantity_total' => 5]);
+        [$loan, $creator] = $this->borrowedLoan($item, 2);
+
+        $member = Member::whereKey($loan->member_id)->firstOrFail();
+        $member->update(['borrowing_status' => 'borrowing_blocked']);
+        $block = MemberBorrowingBlock::factory()->create([
+            'member_id' => $loan->member_id,
+            'loan_transaction_id' => $loan->id,
+        ]);
+
+        $loan->update(['status' => 'overdue', 'overdue_at' => now()->subDay()]);
         $returnRequest = $this->pendingReturn($loan, $creator);
         $loanItem = $loan->items()->firstOrFail();
 
@@ -213,9 +272,34 @@ class ReturnTest extends TestCase
                     ],
                 ],
             ])
+            ->assertRedirect();
+
+        $this->assertSame('overdue', $loan->fresh()->status);
+        $this->assertNull($block->fresh()->ended_at);
+        $this->assertSame('borrowing_blocked', $member->fresh()->borrowing_status);
+    }
+
+    public function test_return_cannot_exceed_the_remaining_quantity(): void
+    {
+        $item = Item::factory()->quantity()->create(['quantity_total' => 5]);
+        [$loan, $creator] = $this->borrowedLoan($item, 2);
+        $returnRequest = $this->pendingReturn($loan, $creator);
+        $loanItem = $loan->items()->firstOrFail();
+
+        $this->actingAs($this->userWithRole('admin_korlab'))
+            ->post(route('admin.returns.verify', $returnRequest), [
+                'items' => [
+                    [
+                        'loan_item_id' => $loanItem->id,
+                        'condition' => 'good',
+                        'quantity_returned' => 3,
+                    ],
+                ],
+            ])
             ->assertSessionHasErrors('items');
 
         $this->assertSame('return_pending_verification', $loan->fresh()->status);
+        $this->assertSame(0, $loanItem->fresh()->quantity_returned);
         $this->assertSame(0, ReturnInspection::count());
     }
 

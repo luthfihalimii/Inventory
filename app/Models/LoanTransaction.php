@@ -21,6 +21,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $returned_at
  * @property Carbon|null $completed_at
  * @property Carbon|null $overdue_at
+ * @property Carbon|null $due_reminder_sent_at
  * @property Carbon|null $cancelled_at
  * @property string|null $cancellation_reason
  */
@@ -33,6 +34,7 @@ use Illuminate\Support\Carbon;
     'returned_at',
     'completed_at',
     'overdue_at',
+    'due_reminder_sent_at',
     'cancelled_at',
     'cancellation_reason',
 ])]
@@ -49,6 +51,7 @@ class LoanTransaction extends Model
             'returned_at' => 'datetime',
             'completed_at' => 'datetime',
             'overdue_at' => 'datetime',
+            'due_reminder_sent_at' => 'datetime',
             'cancelled_at' => 'datetime',
         ];
     }

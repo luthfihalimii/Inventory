@@ -93,7 +93,8 @@ Catatan:
 
 `scheduler` dan `queue` **terpisah** dari `web`. Jangan mengandalkan cron di container web.
 
-- Scheduler menjalankan `inventory:overdue` tiap 10 menit (idempotent, `withoutOverlapping`).
+- Scheduler menjalankan `inventory:overdue` tiap 10 menit dan `inventory:due-reminders` tiap
+  pukul 08:00 (keduanya idempotent, `withoutOverlapping`).
   Bisa juga lewat cron: `* * * * * php artisan schedule:run`.
 - Saat ini belum ada job `ShouldQueue`; queue worker dijalankan karena §12 mensyaratkannya dan
   agar job baru langsung tertangani.
@@ -208,8 +209,10 @@ Penutupan:
 2. Checkout: cari nomor referensi → "Serahkan" → scan QR tiap unit → centang checklist → konfirmasi.
 3. Barang rusak saat keluar: pilih kondisi `damaged`.
 4. Verifikasi pengembalian: isi kondisi per baris (`good`/`damaged`/`incomplete`/`lost`).
+   Jumlah kembali boleh sebagian; transaksi selesai hanya setelah semua barang kembali.
 5. Laporan kerusakan: selesaikan dengan `repaired` atau `written_off`.
-6. Inventaris: tambah/ubah barang, unit, kategori, lokasi; cetak QR.
+6. Inventaris: tambah/ubah barang, unit, kategori, lokasi; impor CSV untuk data awal; centang
+   beberapa barang lalu "Cetak QR terpilih" untuk label massal.
 7. Pengumuman: buat draf lalu terbitkan.
 
 ### Wakil Manajer (`wm`)
@@ -227,7 +230,8 @@ Penutupan:
 - [ ] Dashboard menampilkan angka (bukan error 500).
 - [ ] Satu pengajuan uji end-to-end: ajukan → setujui → serah terima → kembali → verifikasi.
 - [ ] Log tidak berisi error; `storage/logs` atau stdout sesuai `LOG_CHANNEL`.
-- [ ] Scheduler jalan: `php artisan schedule:list` menampilkan `inventory:overdue`.
+- [ ] Scheduler jalan: `php artisan schedule:list` menampilkan `inventory:overdue` dan
+      `inventory:due-reminders`.
 - [ ] Backup malam pertama ada dan ukurannya wajar.
 
 ## 9. Rollback

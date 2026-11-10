@@ -78,6 +78,7 @@ class ReturnController extends Controller
                     'name' => $loanItem->item?->name,
                     'tracking_method' => $loanItem->item?->tracking_method,
                     'quantity' => $loanItem->quantity,
+                    'quantity_returned' => $loanItem->quantity_returned,
                     'condition_out' => $loanItem->condition_out,
                     'asset' => $loanItem->asset
                         ? $loanItem->asset->only(['id', 'asset_code', 'condition'])
@@ -105,7 +106,7 @@ class ReturnController extends Controller
         $rows = $request->items();
         $notes = $request->notes();
 
-        /** @var array{0: int, 1: int} $notify */
+        /** @var array{0: int, 1: int, 2: bool} $notify */
         $notify = DB::transaction(function () use ($rows, $notes, $user, $returnRequest, $audit, $overdue): array {
             $locked = ReturnRequest::whereKey($returnRequest->id)->lockForUpdate()->firstOrFail();
 
@@ -144,18 +145,12 @@ class ReturnController extends Controller
 
                 $loanItem = $loanItems[$loanItemId];
                 $total = array_sum(array_column($group, 'quantity_returned'));
+                $remaining = $loanItem->quantity - $loanItem->quantity_returned;
 
-                if ($total !== $loanItem->quantity) {
+                // Partial returns are allowed: unreturned quantity stays open on the loan.
+                if ($total > $remaining) {
                     throw ValidationException::withMessages([
-                        'items' => "Total kembali {$loanItem->item?->name} harus {$loanItem->quantity}, bukan {$total}.",
-                    ]);
-                }
-            }
-
-            foreach ($loanItems as $loanItem) {
-                if (! array_key_exists($loanItem->id, $grouped)) {
-                    throw ValidationException::withMessages([
-                        'items' => "Inspeksi {$loanItem->item?->name} belum lengkap.",
+                        'items' => "Sisa {$loanItem->item?->name} hanya {$remaining}, bukan {$total}.",
                     ]);
                 }
             }
@@ -185,13 +180,35 @@ class ReturnController extends Controller
                     $audit,
                     $row['notes'],
                 );
+
+                $loanItems[$row['loan_item_id']]
+                    ->increment('quantity_returned', (int) $row['quantity_returned']);
             }
 
-            $locked->update(['status' => 'verified', 'verified_at' => now()]);
-            $loan->update(['status' => 'completed', 'returned_at' => now(), 'completed_at' => now()]);
+            $fullyReturned = ! $loan->items()
+                ->whereColumn('quantity_returned', '<', 'quantity')
+                ->exists();
 
-            // §9.4: close the overdue block for this loan; eligible only when nothing else is open.
-            $overdue->releaseForLoan($loan, 'Transaksi selesai dan diverifikasi.');
+            $locked->update(['status' => 'verified', 'verified_at' => now()]);
+
+            if ($fullyReturned) {
+                $loan->update(['status' => 'completed', 'returned_at' => now(), 'completed_at' => now()]);
+
+                // §9.4: close the overdue block for this loan; eligible only when nothing else is open.
+                $overdue->releaseForLoan($loan, 'Transaksi selesai dan diverifikasi.');
+            } else {
+                // The member still holds units, so the block (if any) stays until everything is back.
+                $loan->update(['status' => $loan->overdue_at ? 'overdue' : 'borrowed']);
+
+                $audit->record(
+                    'loan.partially_returned',
+                    $loan,
+                    ['reference_no' => $loan->borrowRequest?->reference_no],
+                    ['status' => 'return_pending_verification'],
+                    ['status' => $loan->status],
+                );
+            }
+
             $audit->record(
                 'return.verified',
                 $locked,
@@ -207,28 +224,37 @@ class ReturnController extends Controller
                 ['status' => 'verified'],
             );
 
-            $audit->record(
-                'loan.completed',
-                $loan,
-                ['reference_no' => $loan->borrowRequest?->reference_no],
-                ['status' => 'return_pending_verification'],
-                ['status' => 'completed'],
-            );
+            if ($fullyReturned) {
+                $audit->record(
+                    'loan.completed',
+                    $loan,
+                    ['reference_no' => $loan->borrowRequest?->reference_no],
+                    ['status' => 'return_pending_verification'],
+                    ['status' => 'completed'],
+                );
+            }
 
-            return [$loan->member_id, $loan->id];
+            return [$loan->member_id, $loan->id, $fullyReturned];
         });
 
-        [$memberId, $loanId] = $notify;
+        [$memberId, $loanId, $fullyReturned] = $notify;
 
         $notifications->notifyMember(
             $memberId,
-            'return.verified',
-            'Pengembalian diverifikasi',
-            'Transaksi selesai. Jika tidak ada pinjaman terlambat lain, status peminjaman kembali normal.',
+            $fullyReturned ? 'return.verified' : 'return.partially_verified',
+            $fullyReturned ? 'Pengembalian diverifikasi' : 'Pengembalian sebagian diverifikasi',
+            $fullyReturned
+                ? 'Transaksi selesai. Jika tidak ada pinjaman terlambat lain, status peminjaman kembali normal.'
+                : 'Barang yang sudah kembali dicatat. Sisa pinjaman masih berjalan; kembalikan sisanya lalu ajukan pengembalian lagi.',
             ['loan_transaction_id' => $loanId, 'return_request_id' => $returnRequest->id],
         );
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Pengembalian diverifikasi.']);
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => $fullyReturned
+                ? 'Pengembalian diverifikasi.'
+                : 'Pengembalian sebagian diverifikasi; sisa pinjaman masih terbuka.',
+        ]);
 
         return redirect()->route('admin.returns.index');
     }

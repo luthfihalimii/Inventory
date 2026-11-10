@@ -12,6 +12,7 @@ type Item = {
     name: string | null;
     tracking_method: 'serialized' | 'quantity' | null;
     quantity: number;
+    quantity_returned: number;
     condition_out: string;
     asset: { id: number; asset_code: string; condition: string } | null;
 };
@@ -58,12 +59,14 @@ defineOptions({
 
 const form = useForm({
     notes: '',
-    items: props.request.items.map((item) => ({
-        loan_item_id: item.id,
-        condition: 'good' as 'good' | 'damaged' | 'incomplete' | 'lost',
-        quantity_returned: item.quantity,
-        notes: '',
-    })),
+    items: props.request.items
+        .filter((item) => item.quantity > item.quantity_returned)
+        .map((item) => ({
+            loan_item_id: item.id,
+            condition: 'good' as 'good' | 'damaged' | 'incomplete' | 'lost',
+            quantity_returned: item.quantity - item.quantity_returned,
+            notes: '',
+        })),
 });
 
 const cancelForm = useForm({ reason: '' });
@@ -81,7 +84,10 @@ function remainingFor(loanItemId: number): number {
             0,
         );
 
-    return Math.max(0, (item?.quantity ?? 0) - used);
+    return Math.max(
+        0,
+        (item?.quantity ?? 0) - (item?.quantity_returned ?? 0) - used,
+    );
 }
 
 function addRow(): void {
@@ -184,6 +190,7 @@ const conditionLabel: Record<string, string> = {
                         <th class="p-3">Nama</th>
                         <th class="p-3">Unit</th>
                         <th class="p-3">Jumlah</th>
+                        <th class="p-3">Sudah kembali</th>
                         <th class="p-3">Kondisi keluar</th>
                     </tr>
                 </thead>
@@ -211,6 +218,7 @@ const conditionLabel: Record<string, string> = {
                             }}
                         </td>
                         <td class="p-3">{{ item.quantity }}</td>
+                        <td class="p-3">{{ item.quantity_returned }}</td>
                         <td class="p-3">
                             {{
                                 conditionLabel[item.condition_out] ??
@@ -282,7 +290,11 @@ const conditionLabel: Record<string, string> = {
                                         :key="item.id"
                                         :value="item.id"
                                     >
-                                        {{ item.name }} ({{ item.quantity }})
+                                        {{ item.name }} (sisa
+                                        {{
+                                            item.quantity -
+                                            item.quantity_returned
+                                        }})
                                     </option>
                                 </select>
                             </td>
@@ -305,6 +317,10 @@ const conditionLabel: Record<string, string> = {
                                     type="number"
                                     class="w-24"
                                     min="1"
+                                    :max="
+                                        remainingFor(row.loan_item_id) +
+                                        (Number(row.quantity_returned) || 0)
+                                    "
                                 />
                             </td>
                             <td class="p-2">

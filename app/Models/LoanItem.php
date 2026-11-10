@@ -14,10 +14,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $item_id
  * @property int|null $asset_id
  * @property int $quantity
+ * @property int $quantity_returned
  * @property string $condition_out
  * @property string|null $notes
  */
-#[Fillable(['loan_transaction_id', 'item_id', 'asset_id', 'quantity', 'condition_out', 'notes'])]
+#[Fillable(['loan_transaction_id', 'item_id', 'asset_id', 'quantity', 'quantity_returned', 'condition_out', 'notes'])]
 class LoanItem extends Model
 {
     /** @use HasFactory<LoanItemFactory> */
@@ -27,6 +28,7 @@ class LoanItem extends Model
     {
         return [
             'quantity' => 'integer',
+            'quantity_returned' => 'integer',
         ];
     }
 

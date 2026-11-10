@@ -41,6 +41,32 @@ const search = ref(props.filters.q);
 const status = ref(props.filters.status);
 const categoryId = ref<number | null>(props.filters.category_id);
 const editing = ref<Item | null>(null);
+const selected = ref<number[]>([]);
+
+const importForm = useForm<{ file: File | null }>({ file: null });
+
+function onFileChange(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    importForm.file = input.files?.[0] ?? null;
+}
+
+function submitImport(): void {
+    importForm.post('/admin/inventory/items/import', {
+        forceFormData: true,
+        preserveScroll: true,
+        onSuccess: () => importForm.reset(),
+    });
+}
+
+function printSelected(): void {
+    if (selected.value.length === 0) {
+        return;
+    }
+
+    const params = new URLSearchParams();
+    selected.value.forEach((id) => params.append('ids[]', String(id)));
+    window.open(`/admin/inventory/items/qr?${params.toString()}`, '_blank');
+}
 
 const form = useForm<{
     code: string;
@@ -154,6 +180,37 @@ function submit(): void {
                 <option value="inactive">Nonaktif</option>
             </select>
             <Button type="submit" variant="outline">Terapkan</Button>
+        </form>
+
+        <form
+            class="grid gap-3 rounded-lg border p-4"
+            @submit.prevent="submitImport"
+        >
+            <div>
+                <h2 class="font-medium">Impor CSV</h2>
+                <p class="text-sm text-muted-foreground">
+                    Header: code, name, category, location, tracking_method,
+                    quantity_total, price, acquired_at, status, notes,
+                    asset_codes. Beberapa kode unit dipisah titik koma (;). Satu
+                    baris salah membatalkan seluruh impor.
+                </p>
+            </div>
+            <Input
+                id="import_file"
+                type="file"
+                accept=".csv,text/csv"
+                @change="onFileChange"
+            />
+            <InputError :message="importForm.errors.file" />
+            <div>
+                <Button
+                    type="submit"
+                    variant="outline"
+                    :disabled="importForm.processing || !importForm.file"
+                >
+                    Impor
+                </Button>
+            </div>
         </form>
 
         <form
@@ -296,10 +353,25 @@ function submit(): void {
             </div>
         </form>
 
+        <div class="flex flex-wrap items-center justify-between gap-2">
+            <p class="text-sm text-muted-foreground">
+                {{ selected.length }} barang dipilih
+            </p>
+            <Button
+                type="button"
+                variant="outline"
+                :disabled="selected.length === 0"
+                @click="printSelected"
+            >
+                Cetak QR terpilih
+            </Button>
+        </div>
+
         <div class="overflow-x-auto rounded-lg border">
             <table class="w-full text-sm">
                 <thead class="bg-muted/50 text-left">
                     <tr>
+                        <th class="p-3"></th>
                         <th class="p-3">Kode</th>
                         <th class="p-3">Nama</th>
                         <th class="p-3">Kategori</th>
@@ -314,6 +386,14 @@ function submit(): void {
                         :key="item.id"
                         class="border-t"
                     >
+                        <td class="p-3">
+                            <input
+                                v-model="selected"
+                                type="checkbox"
+                                :value="item.id"
+                                :aria-label="`Pilih ${item.name}`"
+                            />
+                        </td>
                         <td class="p-3 font-mono">{{ item.code }}</td>
                         <td class="p-3">{{ item.name }}</td>
                         <td class="p-3">{{ item.category?.name ?? '-' }}</td>
@@ -345,7 +425,7 @@ function submit(): void {
                         </td>
                     </tr>
                     <tr v-if="items.data.length === 0">
-                        <td class="p-3 text-muted-foreground" colspan="6">
+                        <td class="p-3 text-muted-foreground" colspan="7">
                             Belum ada barang.
                         </td>
                     </tr>
