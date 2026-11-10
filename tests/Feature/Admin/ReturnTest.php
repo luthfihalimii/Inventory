@@ -17,6 +17,8 @@ use App\Models\Role;
 use App\Models\User;
 use App\Services\AvailabilityService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class ReturnTest extends TestCase
@@ -132,6 +134,34 @@ class ReturnTest extends TestCase
 
         $this->assertSame('cancelled', $returnRequest->fresh()->status);
         $this->assertSame('overdue', $loan->fresh()->status);
+    }
+
+    public function test_return_verification_stores_inspection_photos(): void
+    {
+        Storage::fake('public');
+
+        $item = Item::factory()->quantity()->create(['quantity_total' => 5]);
+        [$loan, $creator] = $this->borrowedLoan($item, 1);
+        $returnRequest = $this->pendingReturn($loan, $creator);
+        $loanItem = $loan->items()->firstOrFail();
+
+        $this->actingAs($this->userWithRole('admin_korlab'))
+            ->post(route('admin.returns.verify', $returnRequest), [
+                'items' => [
+                    [
+                        'loan_item_id' => $loanItem->id,
+                        'condition' => 'good',
+                        'quantity_returned' => 1,
+                    ],
+                ],
+                'photos' => [UploadedFile::fake()->image('kembali.jpg')],
+            ])
+            ->assertRedirect(route('admin.returns.index'))
+            ->assertSessionHasNoErrors();
+
+        $photos = ReturnInspection::firstOrFail()->photos;
+        $this->assertCount(1, $photos);
+        Storage::disk('public')->assertExists($photos[0]);
     }
 
     public function test_admin_verifies_a_good_return(): void

@@ -24,6 +24,8 @@ class StoreCheckoutRequest extends FormRequest
             'checklist' => ['nullable', 'array'],
             'checklist.*' => ['boolean'],
             'notes' => ['nullable', 'string', 'max:2000'],
+            'photos' => ['nullable', 'array', 'max:5'],
+            'photos.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
         ];
     }
 

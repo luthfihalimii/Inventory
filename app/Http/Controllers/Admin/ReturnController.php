@@ -14,6 +14,7 @@ use App\Models\ReturnRequest;
 use App\Services\AuditLogger;
 use App\Services\NotificationService;
 use App\Services\OverdueService;
+use App\Services\PhotoStorage;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -55,6 +56,7 @@ class ReturnController extends Controller
             'loanTransaction.member.division:id,name',
             'loanTransaction.items.item:id,code,name,tracking_method',
             'loanTransaction.items.asset:id,item_id,asset_code,condition,status',
+            'loanTransaction.handover',
             'inspection.items',
         ]);
 
@@ -90,6 +92,8 @@ class ReturnController extends Controller
                     'quantity_returned' => $item->quantity_returned,
                     'notes' => $item->notes,
                 ]),
+                'inspectionPhotos' => $returnRequest->inspection->photos ?? [],
+                'handoverPhotos' => $returnRequest->loanTransaction->handover->photos ?? [],
             ],
             'canVerify' => $returnRequest->status === 'pending',
         ]);
@@ -101,13 +105,16 @@ class ReturnController extends Controller
         AuditLogger $audit,
         OverdueService $overdue,
         NotificationService $notifications,
+        PhotoStorage $photoStorage,
     ): RedirectResponse {
         $user = $request->user();
         $rows = $request->items();
         $notes = $request->notes();
+        $photoFiles = $request->file('photos', []);
+        $photoFiles = is_array($photoFiles) ? $photoFiles : [];
 
         /** @var array{0: int, 1: int, 2: bool} $notify */
-        $notify = DB::transaction(function () use ($rows, $notes, $user, $returnRequest, $audit, $overdue): array {
+        $notify = DB::transaction(function () use ($rows, $notes, $user, $returnRequest, $audit, $overdue, $photoStorage, $photoFiles): array {
             $locked = ReturnRequest::whereKey($returnRequest->id)->lockForUpdate()->firstOrFail();
 
             if ($locked->status !== 'pending') {
@@ -160,6 +167,7 @@ class ReturnController extends Controller
                 'officer_user_id' => $user->id,
                 'inspected_at' => now(),
                 'notes' => $notes,
+                'photos' => $photoStorage->store($photoFiles, "returns/{$locked->id}") ?: null,
             ]);
 
             foreach ($rows as $row) {

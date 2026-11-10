@@ -20,6 +20,8 @@ class VerifyReturnRequest extends FormRequest
             'items.*.condition' => ['required', Rule::in(['good', 'damaged', 'incomplete', 'lost'])],
             'items.*.quantity_returned' => ['required', 'integer', 'min:1', 'max:1000'],
             'items.*.notes' => ['nullable', 'string', 'max:500'],
+            'photos' => ['nullable', 'array', 'max:5'],
+            'photos.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
         ];
     }
 

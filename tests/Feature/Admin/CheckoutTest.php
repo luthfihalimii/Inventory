@@ -14,6 +14,8 @@ use App\Models\Role;
 use App\Models\User;
 use App\Services\AvailabilityService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class CheckoutTest extends TestCase
@@ -114,6 +116,57 @@ class CheckoutTest extends TestCase
         $this->assertSame(1, AuditLog::where('action', 'loan.checked_out')->count());
 
         $this->assertSame(3, app(AvailabilityService::class)->summary($item)['available']);
+    }
+
+    public function test_checkout_stores_handover_photos(): void
+    {
+        Storage::fake('public');
+
+        $item = Item::factory()->quantity()->create(['quantity_total' => 5]);
+        [$loan] = $this->approvedLoan($item, 1);
+        $reservation = $loan->borrowRequest->reservations()->firstOrFail();
+
+        $this->actingAs($this->admin())
+            ->post(route('admin.checkout.store', $loan), [
+                'lines' => [
+                    [
+                        'reservation_id' => $reservation->id,
+                        'quantity' => 1,
+                        'condition_out' => 'good',
+                    ],
+                ],
+                'photos' => [UploadedFile::fake()->image('kondisi.jpg')],
+            ])
+            ->assertRedirect(route('admin.checkout.index'))
+            ->assertSessionHasNoErrors();
+
+        $photos = $loan->handover()->firstOrFail()->photos;
+        $this->assertCount(1, $photos);
+        Storage::disk('public')->assertExists($photos[0]);
+    }
+
+    public function test_checkout_rejects_non_image_photos(): void
+    {
+        Storage::fake('public');
+
+        $item = Item::factory()->quantity()->create(['quantity_total' => 5]);
+        [$loan] = $this->approvedLoan($item, 1);
+        $reservation = $loan->borrowRequest->reservations()->firstOrFail();
+
+        $this->actingAs($this->admin())
+            ->post(route('admin.checkout.store', $loan), [
+                'lines' => [
+                    [
+                        'reservation_id' => $reservation->id,
+                        'quantity' => 1,
+                        'condition_out' => 'good',
+                    ],
+                ],
+                'photos' => [UploadedFile::fake()->create('dokumen.pdf', 100, 'application/pdf')],
+            ])
+            ->assertSessionHasErrors('photos.0');
+
+        $this->assertSame(0, $loan->handover()->count());
     }
 
     public function test_admin_can_check_out_serialized_units(): void

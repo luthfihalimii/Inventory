@@ -4,8 +4,10 @@ import {
     BookOpen,
     Boxes,
     Building2,
+    CalendarClock,
     ClipboardCheck,
     ClipboardList,
+    Download,
     FolderGit2,
     LayoutGrid,
     MapPin,
@@ -64,6 +66,15 @@ const mainNavItems: NavItem[] = [
 
 const approvalNavItems: NavItem[] = [
     { title: 'Approval', href: '/admin/approval', icon: ClipboardCheck },
+    {
+        title: 'Perpanjangan',
+        href: '/admin/extensions',
+        icon: CalendarClock,
+    },
+];
+
+const reportNavItems: NavItem[] = [
+    { title: 'Laporan', href: '/admin/reports', icon: Download },
 ];
 
 const adminNavItems: NavItem[] = [
@@ -123,6 +134,11 @@ const footerNavItems: NavItem[] = [
                 v-if="isAdmin || isWm"
                 :items="approvalNavItems"
                 label="Persetujuan"
+            />
+            <NavMain
+                v-if="isAdmin || isWm"
+                :items="reportNavItems"
+                label="Laporan"
             />
             <NavMain v-if="isAdmin" :items="adminNavItems" label="Inventaris" />
             <NavMain v-if="isWm" :items="wmNavItems" label="Manajemen" />

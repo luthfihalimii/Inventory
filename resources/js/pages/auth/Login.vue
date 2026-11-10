@@ -71,6 +71,12 @@ defineProps<{
                     <Checkbox id="remember" name="remember" :tabindex="3" />
                     <span>Remember me</span>
                 </Label>
+                <a
+                    href="/forgot-password"
+                    class="text-sm text-muted-foreground underline"
+                >
+                    Lupa password?
+                </a>
             </div>
 
             <Button

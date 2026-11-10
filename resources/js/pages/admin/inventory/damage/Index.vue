@@ -12,6 +12,8 @@ type Report = {
     status: 'open' | 'resolved';
     resolution: string | null;
     resolution_notes: string | null;
+    cost: string | null;
+    vendor: string | null;
     reported_at: string;
     resolved_at: string | null;
     item?: { id: number; code: string; name: string; tracking_method: string };
@@ -53,9 +55,31 @@ function resolve(report: Report, resolution: 'repaired' | 'written_off'): void {
         return;
     }
 
+    const cost = window.prompt(
+        'Biaya perbaikan (opsional, angka):',
+        report.cost ?? '',
+    );
+
+    if (cost === null) {
+        return;
+    }
+
+    const vendor = window.prompt(
+        'Vendor / petugas perbaikan (opsional):',
+        report.vendor ?? '',
+    );
+
+    if (vendor === null) {
+        return;
+    }
+
     router.put(
         `/admin/inventory/damage-reports/${report.id}/resolve`,
-        { resolution },
+        {
+            resolution,
+            cost: cost || undefined,
+            vendor: vendor || undefined,
+        },
         { preserveScroll: true },
     );
 }
@@ -101,6 +125,8 @@ const typeLabel: Record<string, string> = {
                         <th class="p-3">Jumlah</th>
                         <th class="p-3">Keterangan</th>
                         <th class="p-3">Status</th>
+                        <th class="p-3">Biaya</th>
+                        <th class="p-3">Vendor / petugas</th>
                         <th class="p-3"></th>
                     </tr>
                 </thead>
@@ -138,6 +164,10 @@ const typeLabel: Record<string, string> = {
                                 }}
                             </span>
                         </td>
+                        <td class="p-3">
+                            {{ report.cost ? `Rp ${report.cost}` : '-' }}
+                        </td>
+                        <td class="p-3">{{ report.vendor || '-' }}</td>
                         <td class="flex flex-wrap gap-2 p-3">
                             <template v-if="report.status === 'open'">
                                 <Button
@@ -158,7 +188,7 @@ const typeLabel: Record<string, string> = {
                         </td>
                     </tr>
                     <tr v-if="reports.data.length === 0">
-                        <td class="p-3 text-muted-foreground" colspan="7">
+                        <td class="p-3 text-muted-foreground" colspan="9">
                             Belum ada laporan.
                         </td>
                     </tr>

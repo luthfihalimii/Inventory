@@ -16,6 +16,28 @@ type Asset = {
     status: string;
 };
 
+type ScheduleEntry = {
+    start: string;
+    end: string;
+    quantity: number;
+    kind: 'reservation' | 'loan';
+};
+
+type MaintenanceHistory = {
+    id: number;
+    type: string;
+    quantity: number | null;
+    description: string;
+    status: string;
+    resolution: string | null;
+    resolution_notes: string | null;
+    cost: string | null;
+    vendor: string | null;
+    reported_at: string;
+    resolved_at: string | null;
+    resolver: { id: number; name: string } | null;
+};
+
 type Item = {
     id: number;
     code: string;
@@ -34,6 +56,8 @@ type Item = {
 const props = defineProps<{
     item: Item;
     availability: Availability;
+    schedule: ScheduleEntry[];
+    maintenanceHistory: MaintenanceHistory[];
     canManage: boolean;
 }>();
 
@@ -61,6 +85,68 @@ const canBorrow = computed(
     () => roles.value.includes('user') && props.item.status === 'active',
 );
 
+function busyOn(day: Date): number {
+    const dayStart = new Date(day.getFullYear(), day.getMonth(), day.getDate());
+    const dayEnd = new Date(dayStart);
+    dayEnd.setDate(dayEnd.getDate() + 1);
+
+    return props.schedule.reduce((total, entry) => {
+        const start = new Date(entry.start);
+        const end = new Date(entry.end);
+
+        return start < dayEnd && end > dayStart
+            ? total + entry.quantity
+            : total;
+    }, 0);
+}
+
+const months = computed(() => {
+    const result: {
+        label: string;
+        offset: number;
+        days: { day: number; busy: number; level: string }[];
+    }[] = [];
+    const base = new Date();
+
+    for (let index = 0; index < 3; index++) {
+        const first = new Date(base.getFullYear(), base.getMonth() + index, 1);
+        const daysInMonth = new Date(
+            first.getFullYear(),
+            first.getMonth() + 1,
+            0,
+        ).getDate();
+        const days: { day: number; busy: number; level: string }[] = [];
+
+        for (let day = 1; day <= daysInMonth; day++) {
+            const date = new Date(first.getFullYear(), first.getMonth(), day);
+            const busy = busyOn(date);
+
+            days.push({
+                day,
+                busy,
+                level:
+                    props.availability.total > 0 &&
+                    busy >= props.availability.total
+                        ? 'full'
+                        : busy > 0
+                          ? 'partial'
+                          : 'free',
+            });
+        }
+
+        result.push({
+            label: first.toLocaleDateString('id-ID', {
+                month: 'long',
+                year: 'numeric',
+            }),
+            offset: (first.getDay() + 6) % 7,
+            days,
+        });
+    }
+
+    return result;
+});
+
 function addToCart(): void {
     pushCartLine({
         item_id: props.item.id,
@@ -86,6 +172,23 @@ const statusLabel: Record<string, string> = {
     lost: 'Hilang',
     inactive: 'Nonaktif',
 };
+
+const typeLabel: Record<string, string> = {
+    damage: 'Rusak',
+    loss: 'Hilang',
+    incomplete: 'Tidak lengkap',
+    maintenance: 'Perawatan',
+};
+
+function formatDate(value: string | null): string {
+    if (!value) {
+        return '-';
+    }
+
+    return new Date(value).toLocaleDateString('id-ID', {
+        dateStyle: 'medium',
+    });
+}
 </script>
 
 <template>
@@ -156,6 +259,79 @@ const statusLabel: Record<string, string> = {
         </div>
 
         <div class="rounded-lg border p-4">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+                <h2 class="font-medium">Kalender ketersediaan (90 hari)</h2>
+                <div class="flex flex-wrap gap-3 text-xs text-muted-foreground">
+                    <span class="flex items-center gap-1">
+                        <span
+                            class="inline-block size-3 rounded bg-emerald-500/20"
+                        />
+                        Kosong
+                    </span>
+                    <span class="flex items-center gap-1">
+                        <span
+                            class="inline-block size-3 rounded bg-amber-500/30"
+                        />
+                        Sebagian
+                    </span>
+                    <span class="flex items-center gap-1">
+                        <span
+                            class="inline-block size-3 rounded bg-red-500/30"
+                        />
+                        Penuh
+                    </span>
+                </div>
+            </div>
+
+            <div class="mt-4 grid gap-6 md:grid-cols-3">
+                <div v-for="month in months" :key="month.label">
+                    <p class="mb-2 text-sm font-medium">{{ month.label }}</p>
+                    <div
+                        class="grid grid-cols-7 gap-1 text-center text-xs"
+                        role="grid"
+                        :aria-label="month.label"
+                    >
+                        <span
+                            v-for="label in [
+                                'Sen',
+                                'Sel',
+                                'Rab',
+                                'Kam',
+                                'Jum',
+                                'Sab',
+                                'Min',
+                            ]"
+                            :key="label"
+                            class="py-1 text-muted-foreground"
+                        >
+                            {{ label }}
+                        </span>
+                        <span
+                            v-for="blank in month.offset"
+                            :key="`blank-${blank}`"
+                        ></span>
+                        <span
+                            v-for="day in month.days"
+                            :key="day.day"
+                            class="rounded py-1"
+                            :class="{
+                                'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300':
+                                    day.level === 'free',
+                                'bg-amber-500/20 text-amber-800 dark:text-amber-300':
+                                    day.level === 'partial',
+                                'bg-red-500/20 text-red-800 dark:text-red-300':
+                                    day.level === 'full',
+                            }"
+                            :title="`${day.busy} unit terpakai`"
+                        >
+                            {{ day.day }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="rounded-lg border p-4">
             <dl class="grid gap-2 text-sm sm:grid-cols-3">
                 <div>
                     <dt class="text-muted-foreground">Metode</dt>
@@ -217,6 +393,75 @@ const statusLabel: Record<string, string> = {
                     </tr>
                 </tbody>
             </table>
+        </div>
+
+        <div v-if="canManage" class="rounded-lg border">
+            <div class="border-b p-4">
+                <h2 class="font-medium">Riwayat maintenance &amp; biaya</h2>
+                <p class="text-sm text-muted-foreground">
+                    20 laporan terakhir untuk barang ini.
+                </p>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-muted/50 text-left">
+                        <tr>
+                            <th class="p-3">Dilaporkan</th>
+                            <th class="p-3">Jenis</th>
+                            <th class="p-3">Jumlah</th>
+                            <th class="p-3">Status</th>
+                            <th class="p-3">Biaya</th>
+                            <th class="p-3">Vendor / petugas</th>
+                            <th class="p-3">Selesai</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr
+                            v-for="entry in maintenanceHistory"
+                            :key="entry.id"
+                            class="border-t align-top"
+                        >
+                            <td class="p-3 whitespace-nowrap">
+                                {{ formatDate(entry.reported_at) }}
+                            </td>
+                            <td class="p-3">
+                                {{ typeLabel[entry.type] ?? entry.type }}
+                                <span
+                                    class="block text-xs text-muted-foreground"
+                                >
+                                    {{ entry.description }}
+                                </span>
+                            </td>
+                            <td class="p-3">{{ entry.quantity ?? '-' }}</td>
+                            <td class="p-3">
+                                {{
+                                    entry.status === 'open'
+                                        ? 'Terbuka'
+                                        : entry.resolution === 'repaired'
+                                          ? 'Diperbaiki'
+                                          : 'Dihapuskan'
+                                }}
+                            </td>
+                            <td class="p-3">
+                                {{ entry.cost ? `Rp ${entry.cost}` : '-' }}
+                            </td>
+                            <td class="p-3">
+                                {{
+                                    entry.vendor || entry.resolver?.name || '-'
+                                }}
+                            </td>
+                            <td class="p-3 whitespace-nowrap">
+                                {{ formatDate(entry.resolved_at) }}
+                            </td>
+                        </tr>
+                        <tr v-if="maintenanceHistory.length === 0">
+                            <td class="p-3 text-muted-foreground" colspan="7">
+                                Belum ada riwayat maintenance.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
 
         <form

@@ -5,9 +5,12 @@ namespace App\Http\Controllers\Inventory;
 use App\Http\Controllers\Controller;
 use App\Models\Asset;
 use App\Models\Category;
+use App\Models\DamageReport;
 use App\Models\Item;
+use App\Models\LoanItem;
 use App\Services\AvailabilityService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -70,7 +73,83 @@ class CatalogController extends Controller
                     : [],
             ],
             'availability' => $availability->summary($item),
+            'schedule' => $this->schedule($item),
+            'maintenanceHistory' => $canManage
+                ? DamageReport::query()
+                    ->where('item_id', $item->id)
+                    ->with('resolver:id,name')
+                    ->latest('reported_at')
+                    ->limit(20)
+                    ->get()
+                    ->map(fn (DamageReport $report) => [
+                        ...$report->only([
+                            'id', 'type', 'quantity', 'description', 'status',
+                            'resolution', 'resolution_notes', 'cost', 'vendor',
+                            'reported_at', 'resolved_at',
+                        ]),
+                        'resolver' => $report->resolver?->only(['id', 'name']),
+                    ])
+                    ->values()
+                : [],
             'canManage' => $canManage,
         ]);
+    }
+
+    /**
+     * Busy ranges for the next 90 days: active reservations and open loans.
+     *
+     * @return array<int, array{start: string, end: string, quantity: int, kind: string}>
+     */
+    private function schedule(Item $item): array
+    {
+        $windowStart = now()->startOfDay();
+        $windowEnd = now()->addDays(90)->endOfDay();
+        $ranges = [];
+
+        $reservations = $item->reservations()
+            ->where('status', 'active')
+            ->where('start_at', '<', $windowEnd)
+            ->where('end_at', '>', $windowStart)
+            ->get(['start_at', 'end_at', 'quantity']);
+
+        foreach ($reservations as $reservation) {
+            $ranges[] = [
+                'start' => $reservation->start_at->toIso8601String(),
+                'end' => $reservation->end_at->toIso8601String(),
+                'quantity' => $reservation->quantity,
+                'kind' => 'reservation',
+            ];
+        }
+
+        $lines = LoanItem::query()
+            ->where('item_id', $item->id)
+            ->whereHas('loanTransaction', fn ($query) => $query
+                ->whereIn('status', ['borrowed', 'overdue', 'return_pending_verification']))
+            ->with('loanTransaction:id,status,checked_out_at,due_at')
+            ->get();
+
+        foreach ($lines as $line) {
+            $quantity = $line->quantity - $line->quantity_returned;
+
+            if ($quantity < 1 || $line->loanTransaction === null) {
+                continue;
+            }
+
+            $start = $line->loanTransaction->checked_out_at ?? $windowStart;
+            $end = $line->loanTransaction->due_at ?? $windowEnd;
+
+            if ($start->greaterThanOrEqualTo($windowEnd) || $end->lessThanOrEqualTo($windowStart)) {
+                continue;
+            }
+
+            $ranges[] = [
+                'start' => Carbon::instance($start)->toIso8601String(),
+                'end' => Carbon::instance($end)->toIso8601String(),
+                'quantity' => $quantity,
+                'kind' => 'loan',
+            ];
+        }
+
+        return $ranges;
     }
 }

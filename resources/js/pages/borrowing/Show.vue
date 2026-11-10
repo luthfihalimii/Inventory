@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { Head, Link, router, usePage } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
+import { computed, ref } from 'vue';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 type BorrowRequest = {
     id: number;
@@ -38,6 +40,16 @@ type BorrowRequest = {
         quantity: number;
         notes: string | null;
     }[];
+    extension: {
+        id: number;
+        status: string;
+        current_due_at: string;
+        requested_due_at: string;
+        reason: string;
+        decided_at: string | null;
+        decision_notes: string | null;
+    } | null;
+    canRequestExtension: boolean;
 };
 
 const props = defineProps<{ request: BorrowRequest }>();
@@ -85,6 +97,10 @@ const loanError = computed(
     () => (usePage().props.errors as Record<string, string>).status,
 );
 
+const extensionLoanError = computed(
+    () => (usePage().props.errors as Record<string, string>).loan,
+);
+
 const loanStatusLabel: Record<string, string> = {
     reserved: 'Menunggu penyerahan',
     borrowed: 'Dipinjam',
@@ -99,6 +115,44 @@ const returnStatusLabel: Record<string, string> = {
     verified: 'Terverifikasi',
     cancelled: 'Dibatalkan',
 };
+
+const extensionStatusLabel: Record<string, string> = {
+    pending: 'Menunggu keputusan',
+    approved: 'Disetujui',
+    rejected: 'Ditolak',
+};
+
+const showExtensionForm = ref(false);
+const extensionForm = useForm({
+    requested_due_at: '',
+    reason: '',
+});
+
+const minDue = computed(() => {
+    if (!props.request.loan?.due_at) {
+        return undefined;
+    }
+
+    const date = new Date(props.request.loan.due_at);
+    date.setMinutes(date.getMinutes() + 1);
+    const pad = (value: number) => String(value).padStart(2, '0');
+
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+});
+
+function submitExtension(): void {
+    if (!props.request.loan) {
+        return;
+    }
+
+    extensionForm.post(`/peminjaman/${props.request.loan.id}/extensions`, {
+        preserveScroll: true,
+        onSuccess: () => {
+            extensionForm.reset();
+            showExtensionForm.value = false;
+        },
+    });
+}
 
 function requestReturn(): void {
     if (!props.request.loan || !window.confirm('Ajukan pengembalian barang?')) {
@@ -249,6 +303,80 @@ function cancel(): void {
                 <Button @click="requestReturn">Ajukan pengembalian</Button>
             </div>
             <InputError :message="loanError" />
+
+            <div
+                v-if="request.extension"
+                class="mt-3 rounded border p-3 text-sm"
+            >
+                <p class="font-medium">
+                    Perpanjangan:
+                    {{
+                        extensionStatusLabel[request.extension.status] ??
+                        request.extension.status
+                    }}
+                </p>
+                <p class="text-muted-foreground">
+                    Tenggat diminta:
+                    {{ formatDate(request.extension.requested_due_at) }}
+                </p>
+                <p v-if="request.extension.decision_notes" class="mt-1">
+                    {{ request.extension.decision_notes }}
+                </p>
+            </div>
+
+            <div v-if="request.canRequestExtension" class="mt-3 grid gap-2">
+                <Button
+                    v-if="!showExtensionForm"
+                    variant="outline"
+                    @click="showExtensionForm = true"
+                >
+                    Ajukan perpanjangan
+                </Button>
+                <form
+                    v-else
+                    class="grid gap-2"
+                    @submit.prevent="submitExtension"
+                >
+                    <Label for="requested_due_at">Tenggat baru</Label>
+                    <Input
+                        id="requested_due_at"
+                        v-model="extensionForm.requested_due_at"
+                        type="datetime-local"
+                        :min="minDue"
+                        required
+                    />
+                    <InputError
+                        :message="extensionForm.errors.requested_due_at"
+                    />
+
+                    <Label for="extension_reason">Alasan</Label>
+                    <textarea
+                        id="extension_reason"
+                        v-model="extensionForm.reason"
+                        rows="2"
+                        class="rounded-md border bg-transparent px-3 py-2 text-sm"
+                        required
+                    />
+                    <InputError :message="extensionForm.errors.reason" />
+                    <InputError :message="extensionLoanError" />
+
+                    <div class="flex gap-2">
+                        <Button
+                            type="submit"
+                            :disabled="extensionForm.processing"
+                        >
+                            Kirim pengajuan
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            @click="showExtensionForm = false"
+                        >
+                            Batal
+                        </Button>
+                    </div>
+                </form>
+            </div>
         </div>
 
         <div

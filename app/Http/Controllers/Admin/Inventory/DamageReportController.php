@@ -135,8 +135,10 @@ class DamageReportController extends Controller
         Gate::authorize('manage-inventory');
 
         $resolution = $request->validated('resolution');
+        $cost = $request->validated('cost');
+        $vendor = $request->validated('vendor');
 
-        DB::transaction(function () use ($request, $damageReport, $resolution, $audit): void {
+        DB::transaction(function () use ($request, $damageReport, $resolution, $cost, $vendor, $audit): void {
             $report = DamageReport::whereKey($damageReport->id)->lockForUpdate()->firstOrFail();
 
             if ($report->status !== 'open') {
@@ -172,6 +174,8 @@ class DamageReportController extends Controller
                 'status' => 'resolved',
                 'resolution' => $resolution,
                 'resolution_notes' => $request->validated('resolution_notes'),
+                'cost' => $cost,
+                'vendor' => $vendor,
                 'resolved_by_user_id' => $request->user()->id,
                 'resolved_at' => now(),
             ]);

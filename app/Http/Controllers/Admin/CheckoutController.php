@@ -10,6 +10,7 @@ use App\Models\LoanTransaction;
 use App\Models\Reservation;
 use App\Services\AuditLogger;
 use App\Services\NotificationService;
+use App\Services\PhotoStorage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -175,14 +176,17 @@ class CheckoutController extends Controller
         LoanTransaction $loanTransaction,
         AuditLogger $audit,
         NotificationService $notifications,
+        PhotoStorage $photoStorage,
     ): RedirectResponse {
         $user = $request->user();
         $lines = $request->lines();
         $reason = $request->reason();
         $checklist = $request->checklist();
         $notes = $request->notes();
+        $photoFiles = $request->file('photos', []);
+        $photoFiles = is_array($photoFiles) ? $photoFiles : [];
 
-        DB::transaction(function () use ($lines, $reason, $checklist, $notes, $user, $loanTransaction, $audit): void {
+        DB::transaction(function () use ($lines, $reason, $checklist, $notes, $user, $loanTransaction, $audit, $photoStorage, $photoFiles): void {
             $loan = LoanTransaction::whereKey($loanTransaction->id)->lockForUpdate()->firstOrFail();
             $borrowRequest = $loan->borrowRequest()->lockForUpdate()->firstOrFail();
 
@@ -348,6 +352,7 @@ class CheckoutController extends Controller
                 'handed_at' => now(),
                 'checklist' => $checklist,
                 'scan_results' => $scanResults,
+                'photos' => $photoStorage->store($photoFiles, "handovers/{$loan->id}") ?: null,
                 'borrower_confirmation_method' => 'on_site',
                 'borrower_confirmed_at' => now(),
                 // Spec §7.4: partial checkout and unit swaps require a recorded reason.

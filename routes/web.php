@@ -18,5 +18,6 @@ require __DIR__.'/auth.php';
 require __DIR__.'/announcements.php';
 require __DIR__.'/borrowing.php';
 require __DIR__.'/inventory.php';
+require __DIR__.'/reports.php';
 require __DIR__.'/wm.php';
 require __DIR__.'/settings.php';

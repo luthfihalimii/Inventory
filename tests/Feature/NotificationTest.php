@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Mail\NotificationMail;
 use App\Models\BorrowRequest;
 use App\Models\BorrowRequestItem;
 use App\Models\Item;
@@ -14,6 +15,7 @@ use App\Models\User;
 use App\Services\NotificationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use Inertia\Testing\AssertableInertia;
 use Tests\TestCase;
 
@@ -158,6 +160,8 @@ class NotificationTest extends TestCase
 
     public function test_notification_service_writes_for_users_and_members(): void
     {
+        Mail::fake();
+
         $user = $this->userWithRole('user');
 
         $service = new NotificationService;
@@ -166,6 +170,8 @@ class NotificationTest extends TestCase
         $service->notifyMember($user->member_id, 'test.member', 'Judul');
 
         $this->assertSame(2, Notification::where('user_id', $user->id)->count());
+        Mail::assertQueued(NotificationMail::class, 2);
+        Mail::assertQueued(NotificationMail::class, fn (NotificationMail $mail) => $mail->hasTo($user->email));
     }
 
     public function test_failed_notification_does_not_abort_the_caller_transaction(): void

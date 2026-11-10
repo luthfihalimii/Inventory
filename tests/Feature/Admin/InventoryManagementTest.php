@@ -7,7 +7,10 @@ use App\Models\AuditLog;
 use App\Models\Category;
 use App\Models\DamageReport;
 use App\Models\Item;
+use App\Models\LoanItem;
+use App\Models\LoanTransaction;
 use App\Models\Location;
+use App\Models\Reservation;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\AvailabilityService;
@@ -394,5 +397,88 @@ class InventoryManagementTest extends TestCase
         $this->actingAs($this->admin())
             ->put(route('admin.inventory.damage-reports.resolve', $report), ['resolution' => 'repaired'])
             ->assertSessionHasErrors('resolution');
+    }
+
+    public function test_resolve_saves_maintenance_cost_and_vendor(): void
+    {
+        $item = Item::factory()->quantity()->create(['quantity_total' => 2]);
+        $report = DamageReport::factory()->create(['item_id' => $item->id]);
+
+        $this->actingAs($this->admin())
+            ->put(route('admin.inventory.damage-reports.resolve', $report), [
+                'resolution' => 'repaired',
+                'resolution_notes' => 'Ganti lensa.',
+                'cost' => 150000,
+                'vendor' => 'CV Optik Jaya',
+            ])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $report->refresh();
+        $this->assertSame('150000.00', $report->cost);
+        $this->assertSame('CV Optik Jaya', $report->vendor);
+    }
+
+    public function test_catalog_schedule_lists_reservations_and_open_loans(): void
+    {
+        $item = Item::factory()->quantity()->create(['quantity_total' => 5]);
+
+        Reservation::factory()->create([
+            'item_id' => $item->id,
+            'status' => 'active',
+            'start_at' => now()->addDays(3),
+            'end_at' => now()->addDays(5),
+            'quantity' => 2,
+        ]);
+
+        $loan = LoanTransaction::factory()->create([
+            'status' => 'borrowed',
+            'checked_out_at' => now()->subDay(),
+            'due_at' => now()->addDays(10),
+        ]);
+
+        LoanItem::factory()->create([
+            'loan_transaction_id' => $loan->id,
+            'item_id' => $item->id,
+            'asset_id' => null,
+            'quantity' => 1,
+        ]);
+
+        $this->actingAs($this->userWithRole('user'))
+            ->get(route('inventory.show', $item))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('inventory/Show')
+                ->has('schedule', 2)
+                ->where('schedule.0.kind', 'reservation')
+                ->where('schedule.0.quantity', 2)
+                ->where('schedule.1.kind', 'loan')
+                ->where('schedule.1.quantity', 1));
+    }
+
+    public function test_maintenance_history_is_visible_to_admins_only(): void
+    {
+        $item = Item::factory()->quantity()->create(['quantity_total' => 2]);
+
+        DamageReport::factory()->create([
+            'item_id' => $item->id,
+            'description' => 'Tombol rusak.',
+            'cost' => 75000,
+            'vendor' => 'Bengkel Elektronik',
+            'status' => 'resolved',
+            'resolution' => 'repaired',
+            'resolved_at' => now(),
+        ]);
+
+        $this->actingAs($this->admin())
+            ->get(route('inventory.show', $item))
+            ->assertInertia(fn ($page) => $page
+                ->has('maintenanceHistory', 1)
+                ->where('maintenanceHistory.0.description', 'Tombol rusak.')
+                ->where('maintenanceHistory.0.vendor', 'Bengkel Elektronik'));
+
+        $this->actingAs($this->userWithRole('user'))
+            ->get(route('inventory.show', $item))
+            ->assertInertia(fn ($page) => $page->has('maintenanceHistory', 0));
     }
 }

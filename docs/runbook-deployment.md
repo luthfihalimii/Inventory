@@ -46,6 +46,16 @@ CACHE_STORE=database
 FILESYSTEM_DISK=local
 LOG_CHANNEL=stderr               # log ke stdout, sesuai §12
 LOG_LEVEL=warning
+
+# Email notifikasi (reset password + notifikasi transaksi).
+MAIL_MAILER=smtp
+MAIL_HOST=smtp.example.org
+MAIL_PORT=587
+MAIL_USERNAME=...
+MAIL_PASSWORD=...
+MAIL_ENCRYPTION=tls
+MAIL_FROM_ADDRESS=inventaris@example.org
+MAIL_FROM_NAME="ENT Inventory"
 ```
 
 ## 3. Deploy
@@ -79,6 +89,8 @@ Catatan:
 
 - `SopSeeder` wajib. Halaman `/peminjaman/baru` memakai `firstOrFail()` pada SOP aktif; tanpa seed,
   pengajuan mengembalikan 404.
+- `storage:link` wajib agar foto serah terima/pengembalian dapat diakses dari `/storage/...`.
+  Pastikan `storage/app/public` writable oleh user php-fpm.
 - `migrate:fresh` **hanya** untuk DB lokal/E2E. Jangan pernah di produksi.
 - Perubahan env → `php artisan config:cache` ulang, lalu restart worker + scheduler.
 
@@ -96,8 +108,11 @@ Catatan:
 - Scheduler menjalankan `inventory:overdue` tiap 10 menit dan `inventory:due-reminders` tiap
   pukul 08:00 (keduanya idempotent, `withoutOverlapping`).
   Bisa juga lewat cron: `* * * * * php artisan schedule:run`.
-- Saat ini belum ada job `ShouldQueue`; queue worker dijalankan karena §12 mensyaratkannya dan
-  agar job baru langsung tertangani.
+- Queue worker **wajib** hidup: notifikasi email (`NotificationMail`) dikirim lewat queue
+  setelah transaksi commit. Tanpa worker, email tidak terkirim tetapi transaksi utama tetap
+  berhasil (in-app notification tetap tersimpan).
+- `MAIL_*` harus benar sebelum go-live; reset password mandiri bergantung pada pengiriman email.
+  Uji dengan `php artisan tinker` → `Mail::raw('tes', fn ($m) => $m->to('admin@example.org')->subject('Tes'));`.
 
 Health check: `GET /up` (HTTP 200). Arahkan monitoring ke endpoint ini.
 
@@ -106,7 +121,9 @@ Health check: `GET /up` (HTTP 200). Arahkan monitoring ke endpoint ini.
 Cakupan:
 
 1. Database — `pg_dump` format custom.
-2. Storage privat — `storage/app/private` (berisi file privat bila fitur unggah ditambahkan).
+2. Storage privat — `storage/app/private` (file privat bila ada).
+3. Storage publik — `storage/app/public` (foto serah terima & pengembalian; wajib ikut backup,
+   tidak bisa direkonstruksi dari DB).
 
 Contoh script harian (cron di host backup, 02:00 WIB):
 
@@ -122,10 +139,12 @@ pg_dump -Fc --no-owner --no-privileges \
   -f "$DEST/db-$STAMP.dump" ent_inventory
 
 tar -czf "$DEST/private-$STAMP.tar.gz" -C /srv/ent-inventory/storage/app private
+tar -czf "$DEST/public-$STAMP.tar.gz" -C /srv/ent-inventory/storage/app public
 
 # Simpan 14 hari terakhir.
 find "$DEST" -name 'db-*.dump' -mtime +14 -delete
 find "$DEST" -name 'private-*.tar.gz' -mtime +14 -delete
+find "$DEST" -name 'public-*.tar.gz' -mtime +14 -delete
 ```
 
 `pg_dump` dijalankan dengan user yang punya hak baca seluruh tabel (biasanya role aplikasi).
@@ -145,9 +164,13 @@ pg_restore --no-owner --no-privileges --clean --if-exists \
   -d ent_inventory_restore_drill /var/backups/ent-inventory/db-2026-11-09.dump
 
 # 3. Storage.
-mkdir -p /tmp/drill-storage
-tar -xzf /var/backups/ent-inventory/private-2026-11-09.tar.gz -C /tmp/drill-storage
+mkdir -p /tmp/drill-storage/private /tmp/drill-storage/public
+tar -xzf /var/backups/ent-inventory/private-2026-11-09.tar.gz -C /tmp/drill-storage/private
+tar -xzf /var/backups/ent-inventory/public-2026-11-09.tar.gz -C /tmp/drill-storage/public
 ```
+
+Foto serah terima/pengembalian harus muncul di detail pengembalian setelah restore; jika tidak,
+link `storage:link` atau isi `storage/app/public` belum ikut dipulihkan.
 
 Kriteria lulus:
 
@@ -196,43 +219,59 @@ Penutupan:
 ### Anggota (`user`)
 
 1. Login dengan NRP, ganti password awal.
-2. Cari barang di Inventaris → detail → "Tambah ke keranjang".
-3. Ajukan: terjadwal minimal H-2; mendadak wajib alasan.
-4. Setujui SOP, kirim, simpan nomor referensi.
-5. Pantau status di "Peminjaman Saya".
-6. Ajukan pengembalian dari detail setelah barang diterima; serahkan barang ke Admin Korlab.
-7. Pahami blokir: pinjaman terlambat memblokir semua pengajuan sampai diverifikasi.
+2. Lupa password: tautan "Lupa password?" di halaman masuk → isi email akun → buka tautan reset.
+   Email dikirim lewat queue, jadi pastikan worker dan `MAIL_*` aktif.
+3. Cari barang di Inventaris → detail → "Tambah ke keranjang".
+4. Ajukan: terjadwal minimal H-2; mendadak wajib alasan.
+5. Setujui SOP, kirim, simpan nomor referensi.
+6. Pantau status di "Peminjaman Saya".
+7. Ajukan pengembalian dari detail setelah barang diterima; serahkan barang ke Admin Korlab.
+8. Sebelum tenggat, ajukan perpanjangan (alasan + tanggal baru). Satu pengajuan menunggu per
+   pinjaman; persetujuan mengecek ulang ketersediaan barang.
+9. Pahami blokir: pinjaman terlambat memblokir semua pengajuan sampai diverifikasi.
 
 ### Admin Korlab (`admin_korlab`)
 
 1. Approval: periksa pengajuan, setujui/tolak dengan alasan. Tidak bisa menyetujui pengajuan sendiri.
-2. Checkout: cari nomor referensi → "Serahkan" → scan QR tiap unit → centang checklist → konfirmasi.
-3. Barang rusak saat keluar: pilih kondisi `damaged`.
-4. Verifikasi pengembalian: isi kondisi per baris (`good`/`damaged`/`incomplete`/`lost`).
-   Jumlah kembali boleh sebagian; transaksi selesai hanya setelah semua barang kembali.
-5. Laporan kerusakan: selesaikan dengan `repaired` atau `written_off`.
-6. Inventaris: tambah/ubah barang, unit, kategori, lokasi; impor CSV untuk data awal; centang
+2. Perpanjangan: `/admin/extensions` → setujui/tolak. Persetujuan memindahkan tenggat dan
+   mereset pengingat; ditolak jika stok untuk periode perpanjangan tidak cukup.
+3. Checkout: cari nomor referensi → "Serahkan" → scan QR tiap unit → centang checklist →
+   unggah maks 5 foto kondisi (jpg/png/webp, 5 MB/foto) → konfirmasi.
+4. Barang rusak saat keluar: pilih kondisi `damaged`.
+5. Verifikasi pengembalian: isi kondisi per baris (`good`/`damaged`/`incomplete`/`lost`),
+   unggah foto kondisi kembali. Jumlah kembali boleh sebagian; transaksi selesai hanya setelah
+   semua barang kembali. Foto serah terima tampil sebagai pembanding.
+6. Laporan kerusakan: selesaikan dengan `repaired` atau `written_off`, isi biaya dan
+   vendor/petugas perbaikan. Riwayat 20 laporan terakhir tampil di detail inventaris.
+7. Inventaris: tambah/ubah barang, unit, kategori, lokasi; impor CSV untuk data awal; centang
    beberapa barang lalu "Cetak QR terpilih" untuk label massal.
-7. Pengumuman: buat draf lalu terbitkan.
+8. Laporan: `/admin/reports` → pilih rentang tanggal → unduh CSV pinjaman, pengembalian,
+   kerusakan, atau audit (UTF-8, aman dibuka di Excel).
+9. Pengumuman: buat draf lalu terbitkan.
 
 ### Wakil Manajer (`wm`)
 
-1. Approval (sama seperti Admin Korlab), termasuk pengajuan mendadak.
+1. Approval (sama seperti Admin Korlab), termasuk pengajuan mendadak dan perpanjangan.
 2. Anggota: tambah/ubah anggota, aktivasi/nonaktivasi.
 3. Akun: buat akun, assign/revoke role, reset password, nonaktifkan akun.
 4. Divisi, audit log, dan daftar anggota terblokir (`/wm/blocked`).
 5. Monitoring dashboard: approval menunggu, pinjaman terlambat, kerusakan terbuka.
+6. Laporan: `/admin/reports` → ekspor CSV pinjaman, pengembalian, kerusakan, audit sesuai
+   hak akses pengawasan.
 
 ## 8. Pemeriksaan pasca-deploy
 
 - [ ] `GET /up` → 200.
 - [ ] Login satu akun per role.
 - [ ] Dashboard menampilkan angka (bukan error 500).
-- [ ] Satu pengajuan uji end-to-end: ajukan → setujui → serah terima → kembali → verifikasi.
+- [ ] Satu pengajuan uji end-to-end: ajukan → setujui → serah terima (dengan foto) → kembali
+      (dengan foto) → verifikasi.
+- [ ] `php artisan storage:link` sudah dijalankan; foto tampil di detail pengembalian.
+- [ ] Uji email: permintaan reset password sampai ke inbox, dan notifikasi transaksi masuk queue
+      (`php artisan queue:work` memproses tanpa error).
+- [ ] `php artisan schedule:list` menampilkan `inventory:overdue` dan `inventory:due-reminders`.
 - [ ] Log tidak berisi error; `storage/logs` atau stdout sesuai `LOG_CHANNEL`.
-- [ ] Scheduler jalan: `php artisan schedule:list` menampilkan `inventory:overdue` dan
-      `inventory:due-reminders`.
-- [ ] Backup malam pertama ada dan ukurannya wajar.
+- [ ] Backup malam pertama ada (DB + `private` + `public`) dan ukurannya wajar.
 
 ## 9. Rollback
 

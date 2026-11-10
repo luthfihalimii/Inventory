@@ -92,6 +92,12 @@ class LoanTransaction extends Model
         return $this->hasMany(ReturnRequest::class);
     }
 
+    /** @return HasMany<LoanExtensionRequest, $this> */
+    public function extensionRequests(): HasMany
+    {
+        return $this->hasMany(LoanExtensionRequest::class);
+    }
+
     /** @return HasMany<MemberBorrowingBlock, $this> */
     public function borrowingBlocks(): HasMany
     {

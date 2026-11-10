@@ -99,6 +99,7 @@ const form = useForm({
     }[],
     reason: '',
     notes: '',
+    photos: [] as File[],
     checklist: {
         identity_verified: false,
         condition_checked: false,
@@ -216,7 +217,13 @@ function submit(): void {
 
     form.post(`/admin/checkout/${props.transaction.id}`, {
         preserveScroll: true,
+        forceFormData: true,
     });
+}
+
+function onPhotosChange(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    form.photos = Array.from(input.files ?? []);
 }
 
 function formatDate(value: string): string {
@@ -424,6 +431,21 @@ function formatDate(value: string): string {
                         class="rounded-md border bg-transparent px-3 py-2 text-sm"
                     />
                     <InputError :message="form.errors.notes" />
+                </div>
+
+                <div class="grid gap-2">
+                    <Label for="photos"
+                        >Foto kondisi serah terima (maks 5)</Label
+                    >
+                    <input
+                        id="photos"
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        multiple
+                        class="text-sm"
+                        @change="onPhotosChange"
+                    />
+                    <InputError :message="form.errors.photos" />
                 </div>
 
                 <InputError :message="form.errors.lines" />

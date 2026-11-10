@@ -2,10 +2,12 @@
 
 namespace App\Services;
 
+use App\Mail\NotificationMail;
 use App\Models\Notification;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use Throwable;
 
 class NotificationService
@@ -20,7 +22,7 @@ class NotificationService
     {
         try {
             // Savepoint when nested: a failed insert must not abort the caller's transaction.
-            DB::transaction(fn () => Notification::create([
+            $notification = DB::transaction(fn () => Notification::create([
                 'user_id' => $user->id,
                 'type' => $type,
                 'title' => $title,
@@ -28,6 +30,11 @@ class NotificationService
                 'data' => $data === [] ? null : $data,
                 'created_at' => now(),
             ]));
+
+            if ($user->email !== null && $user->email !== '') {
+                // External channel: queued after commit so a rolled-back action never emails.
+                Mail::to($user->email)->queue(new NotificationMail($notification));
+            }
         } catch (Throwable $exception) {
             report($exception);
         }

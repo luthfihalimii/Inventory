@@ -173,6 +173,16 @@ class RequestController extends Controller
                     'quantity' => $line->quantity,
                     'notes' => $line->notes,
                 ]),
+                'extension' => $loan?->extensionRequests()
+                    ->latest('id')
+                    ->first()
+                    ?->only(['id', 'status', 'current_due_at', 'requested_due_at', 'reason', 'decided_at', 'decision_notes']),
+                'canRequestExtension' => $loan !== null
+                    && $loan->status === 'borrowed'
+                    && $loan->due_at !== null
+                    && now()->lt($loan->due_at)
+                    && $request->user()->member_id === $borrowRequest->member_id
+                    && ! $loan->extensionRequests()->where('status', 'pending')->exists(),
             ],
         ]);
     }

@@ -17,6 +17,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon $handed_at
  * @property array<string, mixed>|null $checklist
  * @property array<int, mixed>|null $scan_results
+ * @property array<int, string>|null $photos
  * @property string $borrower_confirmation_method
  * @property Carbon|null $borrower_confirmed_at
  * @property string|null $notes
@@ -28,6 +29,7 @@ use Illuminate\Support\Carbon;
     'handed_at',
     'checklist',
     'scan_results',
+    'photos',
     'borrower_confirmation_method',
     'borrower_confirmed_at',
     'notes',
@@ -43,6 +45,7 @@ class HandoverRecord extends Model
             'handed_at' => 'datetime',
             'checklist' => 'array',
             'scan_results' => 'array',
+            'photos' => 'array',
             'borrower_confirmed_at' => 'datetime',
         ];
     }

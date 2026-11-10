@@ -33,6 +33,8 @@ type ReturnRequest = {
         member: { name: string; nrp: string; division: string | null };
     };
     items: Item[];
+    inspectionPhotos: string[];
+    handoverPhotos: string[];
     inspection:
         | {
               loan_item_id: number;
@@ -59,6 +61,7 @@ defineOptions({
 
 const form = useForm({
     notes: '',
+    photos: [] as File[],
     items: props.request.items
         .filter((item) => item.quantity > item.quantity_returned)
         .map((item) => ({
@@ -115,7 +118,13 @@ function removeRow(index: number): void {
 function submit(): void {
     form.post(`/admin/returns/${props.request.id}/verify`, {
         preserveScroll: true,
+        forceFormData: true,
     });
+}
+
+function onPhotosChange(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    form.photos = Array.from(input.files ?? []);
 }
 
 function cancel(): void {
@@ -182,6 +191,28 @@ const conditionLabel: Record<string, string> = {
             </div>
         </dl>
 
+        <div
+            v-if="request.handoverPhotos.length > 0"
+            class="rounded-lg border p-4 text-sm"
+        >
+            <p class="mb-2 font-medium">Foto saat serah terima</p>
+            <div class="flex flex-wrap gap-2">
+                <a
+                    v-for="photo in request.handoverPhotos"
+                    :key="photo"
+                    :href="`/storage/${photo}`"
+                    target="_blank"
+                    rel="noopener"
+                >
+                    <img
+                        :src="`/storage/${photo}`"
+                        alt="Foto serah terima"
+                        class="h-24 w-24 rounded border object-cover"
+                    />
+                </a>
+            </div>
+        </div>
+
         <div class="overflow-x-auto rounded-lg border">
             <table class="w-full text-sm">
                 <thead class="bg-muted/50 text-left">
@@ -244,6 +275,24 @@ const conditionLabel: Record<string, string> = {
                     </span>
                 </li>
             </ul>
+            <div
+                v-if="request.inspectionPhotos.length > 0"
+                class="mt-3 flex flex-wrap gap-2"
+            >
+                <a
+                    v-for="photo in request.inspectionPhotos"
+                    :key="photo"
+                    :href="`/storage/${photo}`"
+                    target="_blank"
+                    rel="noopener"
+                >
+                    <img
+                        :src="`/storage/${photo}`"
+                        alt="Foto kondisi pengembalian"
+                        class="h-24 w-24 rounded border object-cover"
+                    />
+                </a>
+            </div>
         </div>
 
         <form
@@ -352,6 +401,19 @@ const conditionLabel: Record<string, string> = {
                     class="rounded-md border bg-transparent px-3 py-2 text-sm"
                 />
                 <InputError :message="form.errors.notes" />
+            </div>
+
+            <div class="grid gap-2">
+                <Label for="photos">Foto kondisi pengembalian (maks 5)</Label>
+                <input
+                    id="photos"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    multiple
+                    class="text-sm"
+                    @change="onPhotosChange"
+                />
+                <InputError :message="form.errors.photos" />
             </div>
 
             <div>

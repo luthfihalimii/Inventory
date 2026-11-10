@@ -2,7 +2,9 @@
 
 use App\Http\Controllers\Admin\ApprovalController;
 use App\Http\Controllers\Admin\CheckoutController;
+use App\Http\Controllers\Admin\ExtensionController as AdminExtensionController;
 use App\Http\Controllers\Admin\ReturnController as AdminReturnController;
+use App\Http\Controllers\Borrowing\ExtensionController as BorrowingExtensionController;
 use App\Http\Controllers\Borrowing\RequestController;
 use App\Http\Controllers\Borrowing\ReturnController as BorrowingReturnController;
 use Illuminate\Support\Facades\Route;
@@ -16,6 +18,9 @@ Route::middleware('auth')->prefix('peminjaman')->name('borrowing.')->group(funct
     Route::post('{loanTransaction}/return', [BorrowingReturnController::class, 'store'])
         ->middleware('role:user')
         ->name('return');
+    Route::post('{loanTransaction}/extensions', [BorrowingExtensionController::class, 'store'])
+        ->middleware('role:user')
+        ->name('extensions.store');
 });
 
 Route::middleware(['auth', 'role:admin_korlab,wm'])->prefix('admin/approval')->name('admin.approval.')->group(function () {
@@ -23,6 +28,12 @@ Route::middleware(['auth', 'role:admin_korlab,wm'])->prefix('admin/approval')->n
     Route::get('{borrowRequest}', [ApprovalController::class, 'show'])->name('show');
     Route::post('{borrowRequest}/approve', [ApprovalController::class, 'approve'])->name('approve');
     Route::post('{borrowRequest}/reject', [ApprovalController::class, 'reject'])->name('reject');
+});
+
+Route::middleware(['auth', 'role:admin_korlab,wm'])->prefix('admin/extensions')->name('admin.extensions.')->group(function () {
+    Route::get('/', [AdminExtensionController::class, 'index'])->name('index');
+    Route::post('{extension}/approve', [AdminExtensionController::class, 'approve'])->name('approve');
+    Route::post('{extension}/reject', [AdminExtensionController::class, 'reject'])->name('reject');
 });
 
 Route::middleware(['auth', 'role:admin_korlab'])->prefix('admin/checkout')->name('admin.checkout.')->group(function () {
