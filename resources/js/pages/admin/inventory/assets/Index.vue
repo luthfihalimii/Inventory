@@ -34,7 +34,7 @@ const itemId = ref<number | null>(props.filters.item_id);
 const editing = ref<Asset | null>(null);
 
 const form = useForm({
-    item_id: props.items[0]?.id ?? null,
+    item_id: props.filters.item_id ?? props.items[0]?.id ?? null,
     asset_code: '',
     serial_number: '',
     condition: 'good',

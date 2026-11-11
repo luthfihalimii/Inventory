@@ -246,6 +246,13 @@ function submit(): void {
                     <option value="quantity">Berdasarkan jumlah</option>
                 </select>
                 <InputError :message="form.errors.tracking_method" />
+                <p
+                    v-if="form.tracking_method === 'serialized'"
+                    class="text-xs text-muted-foreground"
+                >
+                    Setelah disimpan, tambahkan unit di menu Unit aset agar bisa
+                    dipinjam.
+                </p>
             </div>
 
             <div class="grid gap-2">
@@ -407,6 +414,18 @@ function submit(): void {
                             }}
                         </td>
                         <td class="flex flex-wrap justify-end gap-2 p-3">
+                            <Button
+                                v-if="item.tracking_method === 'serialized'"
+                                variant="outline"
+                                size="sm"
+                                as-child
+                            >
+                                <Link
+                                    :href="`/admin/inventory/assets?item_id=${item.id}`"
+                                >
+                                    Unit
+                                </Link>
+                            </Button>
                             <Button variant="outline" size="sm" as-child>
                                 <Link
                                     :href="`/admin/inventory/items/${item.id}/qr`"

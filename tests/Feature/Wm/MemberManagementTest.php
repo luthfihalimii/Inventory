@@ -65,6 +65,25 @@ class MemberManagementTest extends TestCase
         $this->assertSame(1, AuditLog::where('action', 'member.created')->count());
     }
 
+    public function test_two_digit_generation_is_normalized_to_a_year(): void
+    {
+        $division = Division::factory()->create();
+
+        $this->actingAs($this->wm())
+            ->post(route('wm.members.store'), [
+                'member_code' => 'MBR-9003',
+                'name' => 'Anggota Dua Digit',
+                'nrp' => '2499999998',
+                'division_id' => $division->id,
+                'generation' => 21,
+                'membership_status' => 'active',
+                'borrowing_status' => 'eligible',
+            ])
+            ->assertRedirect();
+
+        $this->assertSame(2021, Member::where('nrp', '2499999998')->firstOrFail()->generation);
+    }
+
     public function test_member_nrp_must_be_unique(): void
     {
         $existing = Member::factory()->create();

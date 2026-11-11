@@ -76,7 +76,17 @@ class ItemController extends Controller
 
         $audit->record('item.created', $item, ['code' => $item->code]);
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Barang dibuat.']);
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => $item->tracking_method === 'serialized'
+                ? 'Barang dibuat. Tambahkan unit agar bisa dipinjam.'
+                : 'Barang dibuat.',
+        ]);
+
+        // Serialized items are unusable until they have units; send the admin straight there.
+        if ($item->tracking_method === 'serialized') {
+            return to_route('admin.inventory.assets.index', ['item_id' => $item->id]);
+        }
 
         return back();
     }

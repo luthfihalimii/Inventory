@@ -209,6 +209,26 @@ function formatDate(value: string | null): string {
         </div>
 
         <div
+            v-if="
+                canManage &&
+                item.status === 'active' &&
+                availability.available === 0
+            "
+            class="rounded-lg border border-amber-500/40 bg-amber-500/5 p-4 text-sm"
+        >
+            <p class="font-medium">Belum ada unit yang bisa dipinjam.</p>
+            <p class="text-muted-foreground">
+                Tambah unit baru atau ubah status unit di
+                <Link
+                    :href="`/admin/inventory/assets?item_id=${item.id}`"
+                    class="underline"
+                >
+                    Unit aset </Link
+                >.
+            </p>
+        </div>
+
+        <div
             v-if="canBorrow"
             class="flex flex-wrap items-end gap-3 rounded-lg border p-4"
         >
@@ -231,6 +251,13 @@ function formatDate(value: string | null): string {
                     Keranjang ({{ cartCount }})
                 </Link>
             </Button>
+            <p
+                v-if="availability.available < 1"
+                class="w-full text-sm text-muted-foreground"
+            >
+                Tidak ada unit tersedia saat ini. Coba lagi setelah barang
+                dikembalikan atau hubungi Admin Korlab.
+            </p>
         </div>
 
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

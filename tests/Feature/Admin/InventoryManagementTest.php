@@ -102,6 +102,20 @@ class InventoryManagementTest extends TestCase
         $this->assertSame(1, AuditLog::where('action', 'item.created')->count());
     }
 
+    public function test_creating_a_serialized_item_redirects_to_its_units(): void
+    {
+        $this->actingAs($this->admin())
+            ->post(route('admin.inventory.items.store'), $this->itemPayload([
+                'tracking_method' => 'serialized',
+                'quantity_total' => null,
+            ]))
+            ->assertRedirect(route('admin.inventory.assets.index', [
+                'item_id' => Item::where('code', 'ITM-9001')->firstOrFail()->id,
+            ]));
+
+        $this->assertSame(1, AuditLog::where('action', 'item.created')->count());
+    }
+
     public function test_item_code_must_be_unique(): void
     {
         $existing = Item::factory()->create();

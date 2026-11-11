@@ -246,7 +246,8 @@ Penutupan:
 6. Laporan kerusakan: selesaikan dengan `repaired` atau `written_off`, isi biaya dan
    vendor/petugas perbaikan. Riwayat 20 laporan terakhir tampil di detail inventaris.
 7. Inventaris: tambah/ubah barang, unit, kategori, lokasi; impor CSV untuk data awal; centang
-   beberapa barang lalu "Cetak QR terpilih" untuk label massal.
+   beberapa barang lalu "Cetak QR terpilih" untuk label massal. Barang "Per unit" wajib
+   ditambahkan unitnya di menu Unit aset — tanpa unit, anggota tidak bisa meminjam.
 8. Laporan: `/admin/reports` → pilih rentang tanggal → unduh CSV pinjaman, pengembalian,
    kerusakan, atau audit (UTF-8, aman dibuka di Excel).
 9. Pengumuman: buat draf lalu terbitkan.

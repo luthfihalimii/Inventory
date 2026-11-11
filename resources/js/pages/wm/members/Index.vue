@@ -165,7 +165,11 @@ function submit(): void {
                     id="generation"
                     v-model.number="form.generation"
                     type="number"
+                    placeholder="2021"
                 />
+                <p class="text-xs text-muted-foreground">
+                    Tahun angkatan. Boleh 2 digit, contoh 21 untuk 2021.
+                </p>
                 <InputError :message="form.errors.generation" />
             </div>
 
