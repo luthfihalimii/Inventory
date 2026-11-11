@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { Form, Head } from '@inertiajs/vue3';
+import { Form, Head, router } from '@inertiajs/vue3';
 import SecurityController from '@/actions/App/Http/Controllers/Settings/SecurityController';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
 import PasswordInput from '@/components/PasswordInput.vue';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { edit } from '@/routes/security';
@@ -11,6 +12,13 @@ import { edit } from '@/routes/security';
 // oxfmt-ignore
 type Props = {
     passwordRules: string;
+    sessions: {
+        id: string;
+        device: string;
+        ip: string | null;
+        last_active_at: string;
+        is_current: boolean;
+    }[];
 };
 
 const props = defineProps<Props>();
@@ -25,6 +33,33 @@ defineOptions({
         ],
     },
 });
+
+function revokeSession(id: string): void {
+    if (
+        !window.confirm('Cabut sesi ini? Perangkat tersebut harus login ulang.')
+    ) {
+        return;
+    }
+
+    router.delete(`/settings/sessions/${id}`, { preserveScroll: true });
+}
+
+function revokeOthers(): void {
+    if (
+        !window.confirm('Keluarkan semua perangkat lain? Sesi ini tetap aktif.')
+    ) {
+        return;
+    }
+
+    router.delete('/settings/sessions', { preserveScroll: true });
+}
+
+function formatDate(value: string): string {
+    return new Date(value).toLocaleString('id-ID', {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+    });
+}
 </script>
 
 <template>
@@ -100,5 +135,62 @@ defineOptions({
                 </Button>
             </div>
         </Form>
+
+        <div class="space-y-4 border-t pt-6">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+                <Heading
+                    variant="small"
+                    title="Perangkat & sesi"
+                    description="Semua perangkat yang masih login ke akun Anda. Cabut yang tidak Anda kenali."
+                />
+                <Button
+                    v-if="props.sessions.some((session) => !session.is_current)"
+                    variant="outline"
+                    @click="revokeOthers"
+                >
+                    Keluarkan semua perangkat lain
+                </Button>
+            </div>
+
+            <ul class="grid gap-2">
+                <li
+                    v-for="session in props.sessions"
+                    :key="session.id"
+                    class="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3 text-sm"
+                >
+                    <div>
+                        <p class="font-medium">
+                            {{ session.device }}
+                            <Badge
+                                v-if="session.is_current"
+                                variant="secondary"
+                                class="ml-2"
+                            >
+                                Sesi ini
+                            </Badge>
+                        </p>
+                        <p class="text-muted-foreground">
+                            {{ session.ip ?? 'IP tidak tercatat' }} · terakhir
+                            aktif
+                            {{ formatDate(session.last_active_at) }}
+                        </p>
+                    </div>
+                    <Button
+                        v-if="!session.is_current"
+                        size="sm"
+                        variant="destructive"
+                        @click="revokeSession(session.id)"
+                    >
+                        Cabut
+                    </Button>
+                </li>
+                <li
+                    v-if="props.sessions.length === 0"
+                    class="rounded-lg border p-3 text-sm text-muted-foreground"
+                >
+                    Tidak ada sesi aktif yang tercatat.
+                </li>
+            </ul>
+        </div>
     </div>
 </template>

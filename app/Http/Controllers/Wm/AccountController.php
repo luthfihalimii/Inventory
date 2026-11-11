@@ -11,6 +11,7 @@ use App\Models\Member;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\AuditLogger;
+use App\Services\SessionService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -83,8 +84,12 @@ class AccountController extends Controller
         return back();
     }
 
-    public function updatePassword(AccountPasswordRequest $request, User $account, AuditLogger $audit): RedirectResponse
-    {
+    public function updatePassword(
+        AccountPasswordRequest $request,
+        User $account,
+        AuditLogger $audit,
+        SessionService $sessions,
+    ): RedirectResponse {
         $this->authorize('manage', User::class);
 
         $account->update([
@@ -92,7 +97,13 @@ class AccountController extends Controller
             'must_change_password' => true,
         ]);
 
-        $audit->record('account.password_reset', $account, ['username' => $account->username]);
+        // An admin-set password must not leave the old owner's devices logged in.
+        $revoked = $sessions->revokeAll($account);
+
+        $audit->record('account.password_reset', $account, [
+            'username' => $account->username,
+            'sessions_revoked' => $revoked,
+        ]);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Password direset.']);
 

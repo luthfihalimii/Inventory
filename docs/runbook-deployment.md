@@ -229,6 +229,8 @@ Penutupan:
 8. Sebelum tenggat, ajukan perpanjangan (alasan + tanggal baru). Satu pengajuan menunggu per
    pinjaman; persetujuan mengecek ulang ketersediaan barang.
 9. Pahami blokir: pinjaman terlambat memblokir semua pengajuan sampai diverifikasi.
+10. Keamanan → "Perangkat & sesi": lihat perangkat yang masih login, cabut sesi yang tidak dikenal,
+    atau "Keluarkan semua perangkat lain". Ganti password juga memutus semua sesi lain.
 
 ### Admin Korlab (`admin_korlab`)
 
@@ -253,7 +255,8 @@ Penutupan:
 
 1. Approval (sama seperti Admin Korlab), termasuk pengajuan mendadak dan perpanjangan.
 2. Anggota: tambah/ubah anggota, aktivasi/nonaktivasi.
-3. Akun: buat akun, assign/revoke role, reset password, nonaktifkan akun.
+3. Akun: buat akun, assign/revoke role, reset password (semua sesi akun itu langsung diputus),
+   nonaktifkan akun.
 4. Divisi, audit log, dan daftar anggota terblokir (`/wm/blocked`).
 5. Monitoring dashboard: approval menunggu, pinjaman terlambat, kerusakan terbuka.
 6. Laporan: `/admin/reports` → ekspor CSV pinjaman, pengembalian, kerusakan, audit sesuai
