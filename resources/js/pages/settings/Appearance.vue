@@ -27,6 +27,8 @@ defineOptions({
             title="Appearance settings"
             description="Update the appearance settings for your account"
         />
-        <AppearanceTabs />
+        <div class="rounded-2xl border bg-card p-5">
+            <AppearanceTabs />
+        </div>
     </div>
 </template>

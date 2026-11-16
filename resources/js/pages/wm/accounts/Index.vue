@@ -2,6 +2,9 @@
 import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 import { computed, reactive } from 'vue';
 import InputError from '@/components/InputError.vue';
+import PageHeader from '@/components/PageHeader.vue';
+import StatusBadge from '@/components/StatusBadge.vue';
+import TableShell from '@/components/TableShell.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -96,15 +99,13 @@ function resetPassword(account: Account): void {
     <Head title="Akun" />
 
     <div class="flex flex-col gap-6 p-4">
-        <div>
-            <h1 class="text-xl font-semibold">Akun</h1>
-            <p class="text-sm text-muted-foreground">
-                Kelola akun login, role, status, dan reset password.
-            </p>
-        </div>
+        <PageHeader
+            title="Akun"
+            description="Kelola akun login, role, status, dan reset password."
+        />
 
         <form
-            class="grid gap-4 rounded-lg border p-4 md:grid-cols-2"
+            class="grid gap-4 rounded-2xl border bg-card p-5 md:grid-cols-2"
             @submit.prevent="createAccount"
         >
             <div class="md:col-span-2">
@@ -169,96 +170,102 @@ function resetPassword(account: Account): void {
             </div>
         </form>
 
-        <div class="overflow-x-auto rounded-lg border">
-            <table class="w-full text-sm">
-                <thead class="bg-muted/50 text-left">
-                    <tr>
-                        <th class="p-3">Username</th>
-                        <th class="p-3">Anggota</th>
-                        <th class="p-3">Role</th>
-                        <th class="p-3">Status</th>
-                        <th class="p-3">Reset password</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr
-                        v-for="account in accounts.data"
-                        :key="account.id"
-                        class="border-t align-top"
-                    >
-                        <td class="p-3 font-mono">{{ account.username }}</td>
-                        <td class="p-3">
-                            {{ account.member?.name }}
-                            <span class="block text-xs text-muted-foreground">
-                                {{ account.member?.nrp }}
-                            </span>
-                        </td>
-                        <td class="p-3">
-                            <select
-                                :value="account.roles[0]?.name"
-                                class="h-8 rounded-md border bg-transparent px-2 text-sm"
-                                @change="changeRole(account, $event)"
+        <TableShell caption="Daftar akun pengguna">
+            <thead>
+                <tr>
+                    <th class="p-3">Username</th>
+                    <th class="p-3">Anggota</th>
+                    <th class="p-3">Role</th>
+                    <th class="p-3">Status</th>
+                    <th class="p-3">Reset password</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr
+                    v-for="account in accounts.data"
+                    :key="account.id"
+                    class="border-t align-top"
+                >
+                    <td class="p-3 font-mono">{{ account.username }}</td>
+                    <td class="p-3">
+                        {{ account.member?.name }}
+                        <span class="block text-xs text-muted-foreground">
+                            {{ account.member?.nrp }}
+                        </span>
+                    </td>
+                    <td class="p-3">
+                        <select
+                            :value="account.roles[0]?.name"
+                            class="h-8 rounded-md border bg-transparent px-2 text-sm"
+                            @change="changeRole(account, $event)"
+                        >
+                            <option
+                                v-for="role in roles"
+                                :key="role"
+                                :value="role"
                             >
-                                <option
-                                    v-for="role in roles"
-                                    :key="role"
-                                    :value="role"
-                                >
-                                    {{ role }}
-                                </option>
-                            </select>
-                            <InputError
-                                :message="pageErrors.role"
-                                class="mt-1"
+                                {{ role }}
+                            </option>
+                        </select>
+                        <InputError :message="pageErrors.role" class="mt-1" />
+                    </td>
+                    <td class="p-3">
+                        <StatusBadge
+                            :label="
+                                account.status === 'active'
+                                    ? 'Aktif'
+                                    : 'Nonaktif'
+                            "
+                            :tone="
+                                account.status === 'active'
+                                    ? 'success'
+                                    : 'neutral'
+                            "
+                        />
+                        <Button
+                            class="mt-2"
+                            size="sm"
+                            :variant="
+                                account.status === 'active'
+                                    ? 'outline'
+                                    : 'default'
+                            "
+                            @click="toggleStatus(account)"
+                        >
+                            {{
+                                account.status === 'active'
+                                    ? 'Nonaktifkan'
+                                    : 'Aktifkan'
+                            }}
+                        </Button>
+                        <InputError :message="pageErrors.status" class="mt-1" />
+                    </td>
+                    <td class="p-3">
+                        <div class="flex gap-2">
+                            <Input
+                                v-model="resetPasswords[account.id]"
+                                type="password"
+                                placeholder="Password baru"
+                                class="h-8"
                             />
-                        </td>
-                        <td class="p-3">
                             <Button
                                 size="sm"
-                                :variant="
-                                    account.status === 'active'
-                                        ? 'outline'
-                                        : 'default'
-                                "
-                                @click="toggleStatus(account)"
+                                variant="outline"
+                                @click="resetPassword(account)"
                             >
-                                {{
-                                    account.status === 'active'
-                                        ? 'Nonaktifkan'
-                                        : 'Aktifkan'
-                                }}
+                                Reset
                             </Button>
-                            <InputError
-                                :message="pageErrors.status"
-                                class="mt-1"
-                            />
-                        </td>
-                        <td class="p-3">
-                            <div class="flex gap-2">
-                                <Input
-                                    v-model="resetPasswords[account.id]"
-                                    type="password"
-                                    placeholder="Password baru"
-                                    class="h-8"
-                                />
-                                <Button
-                                    size="sm"
-                                    variant="outline"
-                                    @click="resetPassword(account)"
-                                >
-                                    Reset
-                                </Button>
-                            </div>
-                        </td>
-                    </tr>
-                    <tr v-if="accounts.data.length === 0">
-                        <td class="p-3 text-muted-foreground" colspan="5">
-                            Belum ada akun.
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
+                        </div>
+                    </td>
+                </tr>
+                <tr v-if="accounts.data.length === 0">
+                    <td class="p-3 text-muted-foreground" colspan="5">
+                        Belum ada akun. Daftarkan anggota lalu gunakan formulir
+                        untuk membuat akun.
+                    </td>
+                </tr>
+            </tbody>
+        </TableShell>
 
         <div class="flex flex-wrap gap-1">
             <template v-for="link in accounts.links" :key="link.label">

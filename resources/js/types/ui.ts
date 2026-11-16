@@ -7,3 +7,5 @@ export type FlashToast = {
     type: 'success' | 'info' | 'warning' | 'error';
     message: string;
 };
+
+export type StatusTone = 'neutral' | 'info' | 'success' | 'warning' | 'danger';

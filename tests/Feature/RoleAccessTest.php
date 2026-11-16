@@ -59,4 +59,50 @@ class RoleAccessTest extends TestCase
         $this->assertTrue($user->hasAnyRole(['wm', 'admin_korlab']));
         $this->assertFalse($user->hasAnyRole(['wm', 'user']));
     }
+
+    public function test_staff_cannot_access_member_borrowing_pages(): void
+    {
+        foreach (['admin_korlab', 'wm'] as $roleName) {
+            $user = User::factory()->create();
+            $user->roles()->attach(Role::factory()->create(['name' => $roleName]));
+
+            $this->actingAs($user)->get(route('borrowing.index'))->assertForbidden();
+            $this->actingAs($user)->get(route('borrowing.create'))->assertForbidden();
+            $this->actingAs($user)->post(route('borrowing.store'))->assertForbidden();
+        }
+    }
+
+    public function test_member_can_access_member_borrowing_pages(): void
+    {
+        $user = User::factory()->create();
+        $user->roles()->attach(Role::factory()->create(['name' => 'user']));
+
+        $this->actingAs($user)->get(route('borrowing.index'))->assertOk();
+    }
+
+    public function test_wm_can_access_all_staff_areas(): void
+    {
+        $user = User::factory()->create();
+        $user->roles()->attach(Role::factory()->create(['name' => 'wm']));
+
+        foreach ([
+            'admin.approval.index',
+            'admin.extensions.index',
+            'admin.reports.index',
+            'admin.checkout.index',
+            'admin.returns.index',
+            'admin.inventory.items.index',
+            'admin.announcements.index',
+        ] as $routeName) {
+            $this->actingAs($user)->get(route($routeName))->assertOk();
+        }
+    }
+
+    public function test_admin_korlab_cannot_access_wm_areas(): void
+    {
+        $user = User::factory()->create();
+        $user->roles()->attach(Role::factory()->create(['name' => 'admin_korlab']));
+
+        $this->actingAs($user)->get(route('wm.members.index'))->assertForbidden();
+    }
 }

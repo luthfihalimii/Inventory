@@ -3,7 +3,7 @@
 use App\Http\Controllers\Admin\AnnouncementController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['auth', 'role:admin_korlab'])
+Route::middleware(['auth', 'role:admin_korlab,wm'])
     ->prefix('admin/announcements')
     ->name('admin.announcements.')
     ->group(function () {

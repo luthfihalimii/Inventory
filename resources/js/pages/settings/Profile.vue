@@ -38,14 +38,14 @@ const user = computed(() => page.props.auth.user);
 
         <Form
             v-bind="ProfileController.update.form()"
-            class="space-y-6"
+            class="space-y-6 rounded-2xl border bg-card p-5"
             v-slot="{ errors, processing }"
         >
             <div class="grid gap-2">
                 <Label for="name">Name</Label>
                 <Input
                     id="name"
-                    class="mt-1 block w-full"
+                    class="mt-1 block h-11 w-full rounded-xl"
                     name="name"
                     :default-value="user.name"
                     required
@@ -60,7 +60,7 @@ const user = computed(() => page.props.auth.user);
                 <Input
                     id="email"
                     type="email"
-                    class="mt-1 block w-full"
+                    class="mt-1 block h-11 w-full rounded-xl"
                     name="email"
                     :default-value="user.email ?? ''"
                     autocomplete="email"
@@ -70,7 +70,10 @@ const user = computed(() => page.props.auth.user);
             </div>
 
             <div class="flex items-center gap-4">
-                <Button :disabled="processing" data-test="update-profile-button"
+                <Button
+                    class="h-11 rounded-xl"
+                    :disabled="processing"
+                    data-test="update-profile-button"
                     >Save</Button
                 >
             </div>

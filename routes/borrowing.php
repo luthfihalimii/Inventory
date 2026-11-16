@@ -9,18 +9,19 @@ use App\Http\Controllers\Borrowing\RequestController;
 use App\Http\Controllers\Borrowing\ReturnController as BorrowingReturnController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware('auth')->prefix('peminjaman')->name('borrowing.')->group(function () {
+Route::middleware(['auth', 'role:user'])->prefix('peminjaman')->name('borrowing.')->group(function () {
     Route::get('/', [RequestController::class, 'index'])->name('index');
     Route::get('baru', [RequestController::class, 'create'])->name('create');
-    Route::post('/', [RequestController::class, 'store'])->middleware('role:user')->name('store');
+    Route::post('/', [RequestController::class, 'store'])->name('store');
     Route::get('{borrowRequest}', [RequestController::class, 'show'])->name('show');
-    Route::put('{borrowRequest}/cancel', [RequestController::class, 'cancel'])->name('cancel');
     Route::post('{loanTransaction}/return', [BorrowingReturnController::class, 'store'])
-        ->middleware('role:user')
         ->name('return');
     Route::post('{loanTransaction}/extensions', [BorrowingExtensionController::class, 'store'])
-        ->middleware('role:user')
         ->name('extensions.store');
+});
+
+Route::middleware('auth')->prefix('peminjaman')->name('borrowing.')->group(function () {
+    Route::put('{borrowRequest}/cancel', [RequestController::class, 'cancel'])->name('cancel');
 });
 
 Route::middleware(['auth', 'role:admin_korlab,wm'])->prefix('admin/approval')->name('admin.approval.')->group(function () {
@@ -36,14 +37,14 @@ Route::middleware(['auth', 'role:admin_korlab,wm'])->prefix('admin/extensions')-
     Route::post('{extension}/reject', [AdminExtensionController::class, 'reject'])->name('reject');
 });
 
-Route::middleware(['auth', 'role:admin_korlab'])->prefix('admin/checkout')->name('admin.checkout.')->group(function () {
+Route::middleware(['auth', 'role:admin_korlab,wm'])->prefix('admin/checkout')->name('admin.checkout.')->group(function () {
     Route::get('/', [CheckoutController::class, 'index'])->name('index');
     Route::get('{loanTransaction}', [CheckoutController::class, 'show'])->name('show');
     Route::post('{loanTransaction}/scan', [CheckoutController::class, 'scan'])->name('scan');
     Route::post('{loanTransaction}', [CheckoutController::class, 'store'])->name('store');
 });
 
-Route::middleware(['auth', 'role:admin_korlab'])->prefix('admin/returns')->name('admin.returns.')->group(function () {
+Route::middleware(['auth', 'role:admin_korlab,wm'])->prefix('admin/returns')->name('admin.returns.')->group(function () {
     Route::get('/', [AdminReturnController::class, 'index'])->name('index');
     Route::get('{returnRequest}', [AdminReturnController::class, 'show'])->name('show');
     Route::post('{returnRequest}/verify', [AdminReturnController::class, 'verify'])->name('verify');

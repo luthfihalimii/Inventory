@@ -85,7 +85,7 @@ function formatDate(value: string): string {
                 'password_confirmation',
                 'current_password',
             ]"
-            class="space-y-6"
+            class="space-y-6 rounded-2xl border bg-card p-5"
             v-slot="{ errors, processing }"
         >
             <div class="grid gap-2">
@@ -93,7 +93,7 @@ function formatDate(value: string): string {
                 <PasswordInput
                     id="current_password"
                     name="current_password"
-                    class="mt-1 block w-full"
+                    class="mt-1 block h-11 w-full rounded-xl"
                     autocomplete="current-password"
                     placeholder="Current password"
                 />
@@ -105,7 +105,7 @@ function formatDate(value: string): string {
                 <PasswordInput
                     id="password"
                     name="password"
-                    class="mt-1 block w-full"
+                    class="mt-1 block h-11 w-full rounded-xl"
                     autocomplete="new-password"
                     placeholder="New password"
                     :passwordrules="props.passwordRules"
@@ -118,7 +118,7 @@ function formatDate(value: string): string {
                 <PasswordInput
                     id="password_confirmation"
                     name="password_confirmation"
-                    class="mt-1 block w-full"
+                    class="mt-1 block h-11 w-full rounded-xl"
                     autocomplete="new-password"
                     placeholder="Confirm password"
                     :passwordrules="props.passwordRules"
@@ -128,6 +128,7 @@ function formatDate(value: string): string {
 
             <div class="flex items-center gap-4">
                 <Button
+                    class="h-11 rounded-xl"
                     :disabled="processing"
                     data-test="update-password-button"
                 >

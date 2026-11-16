@@ -2,6 +2,8 @@
 import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 import InputError from '@/components/InputError.vue';
+import StatusBadge from '@/components/StatusBadge.vue';
+import TableShell from '@/components/TableShell.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -166,6 +168,14 @@ function requestReturn(): void {
     );
 }
 
+const statusTone: Record<string, 'warning' | 'success' | 'danger' | 'neutral'> =
+    {
+        pending_approval: 'warning',
+        approved: 'success',
+        rejected: 'danger',
+        cancelled: 'neutral',
+    };
+
 function formatDate(value: string): string {
     return new Date(value).toLocaleString('id-ID', {
         dateStyle: 'medium',
@@ -187,30 +197,41 @@ function cancel(): void {
 <template>
     <Head :title="request.reference_no ?? 'Detail pengajuan'" />
 
-    <div class="flex flex-col gap-6 p-4">
+    <div
+        class="flex min-w-0 flex-col gap-6 p-4 [&_button]:h-11 [&_button]:rounded-xl"
+    >
         <div class="flex flex-wrap items-start justify-between gap-4">
-            <div>
-                <h1 class="text-xl font-semibold">
-                    {{ request.reference_no ?? `#${request.id}` }}
-                </h1>
-                <p class="text-sm text-muted-foreground">
-                    {{ categoryLabel[request.category] ?? request.category }} ·
-                    {{ statusLabel[request.status] ?? request.status }}
+            <div class="min-w-0">
+                <div class="flex flex-wrap items-center gap-3">
+                    <h1
+                        class="text-[22px] leading-tight font-bold tracking-tight md:text-[28px]"
+                    >
+                        {{ request.reference_no ?? `#${request.id}` }}
+                    </h1>
+                    <StatusBadge
+                        :label="statusLabel[request.status] ?? request.status"
+                        :tone="statusTone[request.status] ?? 'neutral'"
+                    />
+                </div>
+                <p class="mt-1 text-sm text-muted-foreground">
+                    {{ categoryLabel[request.category] ?? request.category }}
                 </p>
             </div>
-            <div class="flex gap-2">
+            <div class="flex flex-wrap gap-2">
                 <Button variant="outline" as-child>
                     <Link href="/peminjaman">Kembali</Link>
                 </Button>
                 <Button v-if="canCancel" variant="destructive" @click="cancel">
-                    Batalkan
+                    Batalkan pengajuan
                 </Button>
             </div>
         </div>
 
         <InputError :message="cancelError" />
 
-        <dl class="grid gap-3 rounded-lg border p-4 text-sm sm:grid-cols-2">
+        <dl
+            class="grid gap-4 rounded-2xl border bg-card p-4 text-sm sm:grid-cols-2 md:p-5"
+        >
             <div>
                 <dt class="text-muted-foreground">Mulai pinjam</dt>
                 <dd>{{ formatDate(request.pickup_at) }}</dd>
@@ -237,32 +258,75 @@ function cancel(): void {
             </div>
         </dl>
 
-        <div class="overflow-x-auto rounded-lg border">
-            <table class="w-full text-sm">
-                <thead class="bg-muted/50 text-left">
-                    <tr>
-                        <th class="p-3">Kode</th>
-                        <th class="p-3">Nama</th>
-                        <th class="p-3">Jumlah</th>
-                        <th class="p-3">Catatan</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr
-                        v-for="line in request.items"
-                        :key="line.item_id"
-                        class="border-t"
-                    >
-                        <td class="p-3 font-mono">{{ line.code ?? '-' }}</td>
-                        <td class="p-3">{{ line.name ?? '-' }}</td>
-                        <td class="p-3">{{ line.quantity }}</td>
-                        <td class="p-3">{{ line.notes || '-' }}</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
+        <TableShell caption="Barang yang diajukan">
+            <thead>
+                <tr>
+                    <th>Kode</th>
+                    <th>Nama</th>
+                    <th>Jumlah</th>
+                    <th>Catatan</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr v-for="line in request.items" :key="line.item_id">
+                    <td class="font-mono">{{ line.code ?? '-' }}</td>
+                    <td>{{ line.name ?? '-' }}</td>
+                    <td>{{ line.quantity }}</td>
+                    <td>{{ line.notes || '-' }}</td>
+                </tr>
+            </tbody>
+        </TableShell>
 
-        <div v-if="request.approval" class="rounded-lg border p-4 text-sm">
+        <section class="rounded-2xl border bg-card p-4 md:p-5">
+            <h2 class="font-semibold">Riwayat pengajuan dan pinjaman</h2>
+            <ol class="mt-4 space-y-4 border-l pl-4 text-sm">
+                <li class="relative">
+                    <span
+                        class="absolute top-1 -left-[21px] size-2 rounded-full bg-primary"
+                        aria-hidden="true"
+                    />
+                    <p class="font-medium">Pengajuan dikirim</p>
+                    <p class="text-muted-foreground">
+                        {{ formatDate(request.submitted_at) }}
+                    </p>
+                </li>
+                <li class="relative">
+                    <span
+                        class="absolute top-1 -left-[21px] size-2 rounded-full bg-primary"
+                        aria-hidden="true"
+                    />
+                    <p class="font-medium">Persetujuan pengajuan</p>
+                    <p v-if="request.approval" class="text-muted-foreground">
+                        {{ formatDate(request.approval.decided_at) }}
+                    </p>
+                </li>
+                <li v-if="request.loan" class="relative">
+                    <span
+                        class="absolute top-1 -left-[21px] size-2 rounded-full bg-primary"
+                        aria-hidden="true"
+                    />
+                    <p class="font-medium">
+                        Status pinjaman:
+                        {{
+                            loanStatusLabel[request.loan.status] ??
+                            request.loan.status
+                        }}
+                    </p>
+                    <p
+                        v-if="request.loan.checked_out_at"
+                        class="text-muted-foreground"
+                    >
+                        Diserahkan:
+                        {{ formatDate(request.loan.checked_out_at) }}
+                    </p>
+                </li>
+            </ol>
+        </section>
+
+        <div
+            v-if="request.approval"
+            class="rounded-2xl border bg-card p-4 text-sm md:p-5"
+        >
             <p class="font-medium">
                 Keputusan:
                 {{
@@ -279,13 +343,11 @@ function cancel(): void {
             </p>
         </div>
 
-        <div v-if="request.loan" class="rounded-lg border p-4 text-sm">
-            <p class="font-medium">
-                Status pinjaman:
-                {{
-                    loanStatusLabel[request.loan.status] ?? request.loan.status
-                }}
-            </p>
+        <div
+            v-if="request.loan"
+            class="rounded-2xl border bg-card p-4 text-sm md:p-5"
+        >
+            <p class="font-medium">Detail pinjaman</p>
             <p v-if="request.loan.checked_out_at" class="text-muted-foreground">
                 Diserahkan: {{ formatDate(request.loan.checked_out_at) }}
             </p>
@@ -334,7 +396,7 @@ function cancel(): void {
                 </Button>
                 <form
                     v-else
-                    class="grid gap-2"
+                    class="grid gap-3 rounded-xl border p-4 [&_input]:h-11 [&_input]:rounded-xl [&_textarea]:rounded-xl"
                     @submit.prevent="submitExtension"
                 >
                     <Label for="requested_due_at">Tenggat baru</Label>
@@ -381,7 +443,7 @@ function cancel(): void {
 
         <div
             v-if="request.status === 'cancelled'"
-            class="rounded-lg border p-4 text-sm"
+            class="rounded-2xl border bg-card p-4 text-sm md:p-5"
         >
             <p class="font-medium">Dibatalkan</p>
             <p v-if="request.cancelled_at" class="text-muted-foreground">

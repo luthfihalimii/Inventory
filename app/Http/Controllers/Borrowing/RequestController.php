@@ -135,11 +135,7 @@ class RequestController extends Controller
 
     public function show(Request $request, BorrowRequest $borrowRequest): Response
     {
-        abort_unless(
-            $borrowRequest->created_by_user_id === $request->user()->id
-                || $request->user()->hasAnyRole(['admin_korlab', 'wm']),
-            403,
-        );
+        abort_unless($borrowRequest->created_by_user_id === $request->user()->id, 403);
 
         $borrowRequest->load([
             'items.item:id,code,name,tracking_method',

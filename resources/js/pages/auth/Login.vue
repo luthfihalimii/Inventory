@@ -12,7 +12,8 @@ import { store } from '@/routes/login';
 defineOptions({
     layout: {
         title: 'Masuk ke akun',
-        description: 'Masukkan NRP atau username dan password',
+        description:
+            'Masukkan NRP atau username dan password untuk melanjutkan.',
     },
 });
 
@@ -22,7 +23,7 @@ defineProps<{
 </script>
 
 <template>
-    <Head title="Log in" />
+    <Head title="Masuk" />
 
     <div
         v-if="status"
@@ -39,14 +40,16 @@ defineProps<{
     >
         <div class="grid gap-6">
             <div class="grid gap-2">
-                <Label for="username">NRP / Username</Label>
+                <Label for="username" class="text-[13px] font-medium"
+                    >NRP / Username</Label
+                >
                 <Input
                     id="username"
+                    class="h-11 rounded-xl"
                     type="text"
                     name="username"
                     required
                     v-focus
-                    :tabindex="1"
                     autocomplete="username"
                     placeholder="NRP atau username"
                 />
@@ -54,26 +57,32 @@ defineProps<{
             </div>
 
             <div class="grid gap-2">
-                <Label for="password">Password</Label>
+                <Label for="password" class="text-[13px] font-medium"
+                    >Password</Label
+                >
                 <PasswordInput
                     id="password"
+                    class="h-11 rounded-xl"
                     name="password"
                     required
-                    :tabindex="2"
                     autocomplete="current-password"
                     placeholder="Password"
                 />
                 <InputError :message="errors.password" />
             </div>
 
-            <div class="flex items-center justify-between">
-                <Label for="remember" class="flex items-center space-x-3">
-                    <Checkbox id="remember" name="remember" :tabindex="3" />
-                    <span>Remember me</span>
+            <div class="flex min-h-11 items-center justify-between">
+                <Label for="remember" class="flex min-h-11 items-center gap-3">
+                    <Checkbox
+                        id="remember"
+                        name="remember"
+                        class="relative before:absolute before:-inset-3.5 before:content-['']"
+                    />
+                    <span>Ingat saya</span>
                 </Label>
                 <a
                     href="/forgot-password"
-                    class="text-sm text-muted-foreground underline"
+                    class="inline-flex min-h-11 items-center text-sm text-muted-foreground underline"
                 >
                     Lupa password?
                 </a>
@@ -81,14 +90,17 @@ defineProps<{
 
             <Button
                 type="submit"
-                class="mt-4 w-full"
-                :tabindex="4"
+                class="mt-2 h-11 w-full rounded-xl"
                 :disabled="processing"
                 data-test="login-button"
             >
                 <Spinner v-if="processing" />
-                Log in
+                Masuk
             </Button>
         </div>
     </Form>
+
+    <p class="mt-6 text-center text-xs text-muted-foreground">
+        Akun anggota dibuat oleh WM.
+    </p>
 </template>

@@ -1,8 +1,12 @@
 <script setup lang="ts">
 import { Head, Link, router } from '@inertiajs/vue3';
 import { ref } from 'vue';
+import EmptyState from '@/components/EmptyState.vue';
+import PageHeader from '@/components/PageHeader.vue';
+import StatusBadge from '@/components/StatusBadge.vue';
+import TableShell from '@/components/TableShell.vue';
 import { Button } from '@/components/ui/button';
-import type { Paginated } from '@/types';
+import type { Paginated, StatusTone } from '@/types';
 
 type ReturnRequest = {
     id: number;
@@ -52,88 +56,109 @@ const statusLabel: Record<string, string> = {
     verified: 'Terverifikasi',
     cancelled: 'Dibatalkan',
 };
+
+const statusTone: Record<string, StatusTone> = {
+    pending: 'warning',
+    verified: 'success',
+    cancelled: 'neutral',
+};
 </script>
 
 <template>
     <Head title="Pengembalian" />
 
-    <div class="flex flex-col gap-6 p-4">
-        <div>
-            <h1 class="text-xl font-semibold">Pengembalian</h1>
-            <p class="text-sm text-muted-foreground">
-                Antrean verifikasi dan inspeksi barang kembali.
-            </p>
-        </div>
+    <div class="flex min-w-0 flex-col gap-6 p-4">
+        <PageHeader
+            title="Pengembalian"
+            description="Antrean verifikasi dan inspeksi barang kembali."
+        />
 
-        <form class="flex gap-2" @submit.prevent="applyFilter">
-            <select
-                v-model="status"
-                class="h-9 rounded-md border bg-transparent px-3 text-sm"
-            >
-                <option value="pending">Menunggu</option>
-                <option value="verified">Terverifikasi</option>
-                <option value="cancelled">Dibatalkan</option>
-            </select>
-            <Button type="submit" variant="outline">Terapkan</Button>
-        </form>
+        <section class="rounded-2xl border bg-card p-4">
+            <form class="flex flex-wrap gap-2" @submit.prevent="applyFilter">
+                <select
+                    v-model="status"
+                    class="h-11 rounded-xl border bg-transparent px-3 text-sm"
+                >
+                    <option value="pending">Menunggu</option>
+                    <option value="verified">Terverifikasi</option>
+                    <option value="cancelled">Dibatalkan</option>
+                </select>
+                <Button type="submit" variant="outline">Terapkan</Button>
+            </form>
+        </section>
 
-        <div class="overflow-x-auto rounded-lg border">
-            <table class="w-full text-sm">
-                <thead class="bg-muted/50 text-left">
-                    <tr>
-                        <th class="p-3">Referensi</th>
-                        <th class="p-3">Anggota</th>
-                        <th class="p-3">Diajukan</th>
-                        <th class="p-3">Tenggat</th>
-                        <th class="p-3">Status</th>
-                        <th class="p-3"></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr
-                        v-for="item in requests.data"
-                        :key="item.id"
-                        class="border-t"
+        <EmptyState
+            v-if="requests.data.length === 0"
+            title="Tidak ada pengembalian."
+            description="Belum ada pengembalian pada status ini. Periksa status lain untuk melanjutkan verifikasi."
+        >
+            <template #actions>
+                <Button variant="outline" as-child>
+                    <Link href="/admin/returns?status="
+                        >Lihat semua pengembalian</Link
                     >
-                        <td class="p-3 font-mono">
-                            {{
-                                item.loan_transaction?.borrow_request
-                                    ?.reference_no ?? `#${item.id}`
-                            }}
-                        </td>
-                        <td class="p-3">
-                            {{ item.loan_transaction?.member?.name ?? '-' }}
-                            <span class="block text-xs text-muted-foreground">
-                                {{ item.loan_transaction?.member?.nrp }}
-                            </span>
-                        </td>
-                        <td class="p-3">{{ formatDate(item.requested_at) }}</td>
-                        <td class="p-3">
-                            {{
-                                item.loan_transaction?.due_at
-                                    ? formatDate(item.loan_transaction.due_at)
-                                    : '-'
-                            }}
-                        </td>
-                        <td class="p-3">
-                            {{ statusLabel[item.status] ?? item.status }}
-                        </td>
-                        <td class="p-3 text-right">
-                            <Button variant="outline" size="sm" as-child>
-                                <Link :href="`/admin/returns/${item.id}`">
-                                    Periksa
-                                </Link>
-                            </Button>
-                        </td>
-                    </tr>
-                    <tr v-if="requests.data.length === 0">
-                        <td class="p-3 text-muted-foreground" colspan="6">
-                            Tidak ada pengembalian.
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
+                </Button>
+            </template>
+        </EmptyState>
+
+        <TableShell
+            v-else
+            caption="Daftar permintaan pengembalian dan status verifikasi"
+        >
+            <thead>
+                <tr>
+                    <th class="p-3">Referensi</th>
+                    <th class="p-3">Anggota</th>
+                    <th class="hidden p-3 lg:table-cell">Diajukan</th>
+                    <th class="hidden p-3 md:table-cell">Tenggat</th>
+                    <th class="p-3">Status</th>
+                    <th class="p-3"></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr
+                    v-for="item in requests.data"
+                    :key="item.id"
+                    class="border-t"
+                >
+                    <td class="p-3 font-mono">
+                        {{
+                            item.loan_transaction?.borrow_request
+                                ?.reference_no ?? `#${item.id}`
+                        }}
+                    </td>
+                    <td class="p-3">
+                        {{ item.loan_transaction?.member?.name ?? '-' }}
+                        <span class="block text-xs text-muted-foreground">
+                            {{ item.loan_transaction?.member?.nrp }}
+                        </span>
+                    </td>
+                    <td class="hidden p-3 lg:table-cell">
+                        {{ formatDate(item.requested_at) }}
+                    </td>
+                    <td class="hidden p-3 md:table-cell">
+                        {{
+                            item.loan_transaction?.due_at
+                                ? formatDate(item.loan_transaction.due_at)
+                                : '-'
+                        }}
+                    </td>
+                    <td class="p-3">
+                        <StatusBadge
+                            :label="statusLabel[item.status] ?? item.status"
+                            :tone="statusTone[item.status] ?? 'neutral'"
+                        />
+                    </td>
+                    <td class="p-3 text-right">
+                        <Button variant="outline" size="sm" as-child>
+                            <Link :href="`/admin/returns/${item.id}`">
+                                Periksa
+                            </Link>
+                        </Button>
+                    </td>
+                </tr>
+            </tbody>
+        </TableShell>
 
         <div class="flex flex-wrap gap-1">
             <template v-for="link in requests.links" :key="link.label">

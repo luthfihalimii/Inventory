@@ -2,6 +2,8 @@
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import { ref } from 'vue';
 import InputError from '@/components/InputError.vue';
+import PageHeader from '@/components/PageHeader.vue';
+import TableShell from '@/components/TableShell.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -55,15 +57,13 @@ function submit(): void {
     <Head title="Kategori" />
 
     <div class="flex flex-col gap-6 p-4">
-        <div>
-            <h1 class="text-xl font-semibold">Kategori</h1>
-            <p class="text-sm text-muted-foreground">
-                Kategori barang inventaris.
-            </p>
-        </div>
+        <PageHeader
+            title="Kategori"
+            description="Kelompokkan barang inventaris berdasarkan kategori."
+        />
 
         <form
-            class="grid gap-4 rounded-lg border p-4 md:grid-cols-2"
+            class="grid gap-4 rounded-2xl border bg-card p-5 md:grid-cols-2"
             @submit.prevent="submit"
         >
             <div class="md:col-span-2">
@@ -99,43 +99,42 @@ function submit(): void {
             </div>
         </form>
 
-        <div class="overflow-x-auto rounded-lg border">
-            <table class="w-full text-sm">
-                <thead class="bg-muted/50 text-left">
-                    <tr>
-                        <th class="p-3">Nama</th>
-                        <th class="p-3">Keterangan</th>
-                        <th class="p-3">Barang</th>
-                        <th class="p-3"></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr
-                        v-for="category in categories.data"
-                        :key="category.id"
-                        class="border-t"
-                    >
-                        <td class="p-3">{{ category.name }}</td>
-                        <td class="p-3">{{ category.description ?? '-' }}</td>
-                        <td class="p-3">{{ category.items_count }}</td>
-                        <td class="p-3 text-right">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                @click="startEdit(category)"
-                            >
-                                Ubah
-                            </Button>
-                        </td>
-                    </tr>
-                    <tr v-if="categories.data.length === 0">
-                        <td class="p-3 text-muted-foreground" colspan="4">
-                            Belum ada kategori.
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
+        <TableShell caption="Daftar kategori barang">
+            <thead>
+                <tr>
+                    <th class="p-3">Nama</th>
+                    <th class="p-3">Keterangan</th>
+                    <th class="p-3">Barang</th>
+                    <th class="p-3"></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr
+                    v-for="category in categories.data"
+                    :key="category.id"
+                    class="border-t"
+                >
+                    <td class="p-3">{{ category.name }}</td>
+                    <td class="p-3">{{ category.description ?? '-' }}</td>
+                    <td class="p-3">{{ category.items_count }}</td>
+                    <td class="p-3 text-right">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            @click="startEdit(category)"
+                        >
+                            Ubah
+                        </Button>
+                    </td>
+                </tr>
+                <tr v-if="categories.data.length === 0">
+                    <td class="p-3 text-muted-foreground" colspan="4">
+                        Belum ada kategori. Gunakan formulir untuk menambahkan
+                        kategori sebelum menambah barang.
+                    </td>
+                </tr>
+            </tbody>
+        </TableShell>
 
         <div class="flex flex-wrap gap-1">
             <template v-for="link in categories.links" :key="link.label">

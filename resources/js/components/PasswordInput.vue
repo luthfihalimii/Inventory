@@ -27,7 +27,7 @@ defineExpose({
             v-focus="props.autofocus"
             ref="inputRef"
             :type="showPassword ? 'text' : 'password'"
-            :class="cn('pr-10', props.class)"
+            :class="cn('pr-11', props.class)"
             v-bind="$attrs"
         />
         <button
@@ -35,11 +35,10 @@ defineExpose({
             @click="showPassword = !showPassword"
             :class="
                 cn(
-                    'absolute inset-y-0 right-0 flex items-center rounded-r-md px-3 text-muted-foreground hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring focus-visible:outline-none',
+                    'absolute top-1/2 right-0 flex size-11 -translate-y-1/2 items-center justify-center rounded-r-xl text-muted-foreground hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring',
                 )
             "
             :aria-label="showPassword ? 'Hide password' : 'Show password'"
-            :tabindex="-1"
         >
             <EyeOff v-if="showPassword" class="size-4" />
             <Eye v-else class="size-4" />

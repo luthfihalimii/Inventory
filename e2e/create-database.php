@@ -3,7 +3,7 @@
 // Creates the E2E database if it does not exist. Used by e2e/global-setup.ts.
 
 $host = getenv('DB_HOST') ?: '127.0.0.1';
-$port = getenv('DB_PORT') ?: '5433';
+$port = getenv('DB_PORT') ?: '5432';
 $user = getenv('DB_USERNAME') ?: 'ent_inventory';
 $password = getenv('DB_PASSWORD') ?: 'ent_inventory';
 $database = getenv('E2E_DB') ?: 'ent_inventory_e2e';

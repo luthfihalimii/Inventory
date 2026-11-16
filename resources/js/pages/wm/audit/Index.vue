@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { Head, Link, router } from '@inertiajs/vue3';
 import { ref } from 'vue';
+import PageHeader from '@/components/PageHeader.vue';
+import TableShell from '@/components/TableShell.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -46,60 +48,62 @@ function search(): void {
     <Head title="Audit" />
 
     <div class="flex flex-col gap-6 p-4">
-        <div>
-            <h1 class="text-xl font-semibold">Audit</h1>
-            <p class="text-sm text-muted-foreground">
-                Riwayat perubahan data dan aktivitas login.
-            </p>
-        </div>
+        <PageHeader
+            title="Audit"
+            description="Riwayat perubahan data dan aktivitas login."
+        />
 
-        <form class="flex gap-2" @submit.prevent="search">
-            <Input v-model="action" placeholder="Filter aksi, mis. member" />
-            <Button type="submit" variant="outline">Filter</Button>
-        </form>
+        <section class="rounded-2xl border bg-card p-4">
+            <form class="flex flex-wrap gap-3" @submit.prevent="search">
+                <Input
+                    v-model="action"
+                    placeholder="Filter aksi, mis. member"
+                />
+                <Button type="submit" variant="outline">Filter</Button>
+            </form>
+        </section>
 
-        <div class="overflow-x-auto rounded-lg border">
-            <table class="w-full text-sm">
-                <thead class="bg-muted/50 text-left">
-                    <tr>
-                        <th class="p-3">Waktu</th>
-                        <th class="p-3">Aksi</th>
-                        <th class="p-3">Aktor</th>
-                        <th class="p-3">Entitas</th>
-                        <th class="p-3">IP</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr v-for="log in logs.data" :key="log.id" class="border-t">
-                        <td class="p-3 whitespace-nowrap">
-                            {{ log.created_at }}
-                        </td>
-                        <td class="p-3 font-mono">{{ log.action }}</td>
-                        <td class="p-3">
-                            {{ log.actor_role ?? '-' }}
-                            <span class="block text-xs text-muted-foreground">
-                                {{
-                                    log.actor_user_id
-                                        ? `#${log.actor_user_id}`
-                                        : 'anonim'
-                                }}
-                            </span>
-                        </td>
-                        <td class="p-3">
-                            {{ log.entity_type ?? '-' }} #{{
-                                log.entity_id ?? '-'
+        <TableShell caption="Riwayat aktivitas sistem">
+            <thead>
+                <tr>
+                    <th class="p-3">Waktu</th>
+                    <th class="p-3">Aksi</th>
+                    <th class="hidden p-3 md:table-cell">Aktor</th>
+                    <th class="hidden p-3 lg:table-cell">Entitas</th>
+                    <th class="hidden p-3 md:table-cell">IP</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr v-for="log in logs.data" :key="log.id" class="border-t">
+                    <td class="p-3 whitespace-nowrap">
+                        {{ log.created_at }}
+                    </td>
+                    <td class="p-3 font-mono">{{ log.action }}</td>
+                    <td class="hidden p-3 md:table-cell">
+                        {{ log.actor_role ?? '-' }}
+                        <span class="block text-xs text-muted-foreground">
+                            {{
+                                log.actor_user_id
+                                    ? `#${log.actor_user_id}`
+                                    : 'anonim'
                             }}
-                        </td>
-                        <td class="p-3">{{ log.ip_address ?? '-' }}</td>
-                    </tr>
-                    <tr v-if="logs.data.length === 0">
-                        <td class="p-3 text-muted-foreground" colspan="5">
-                            Belum ada catatan.
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
+                        </span>
+                    </td>
+                    <td class="hidden p-3 lg:table-cell">
+                        {{ log.entity_type ?? '-' }} #{{ log.entity_id ?? '-' }}
+                    </td>
+                    <td class="hidden p-3 md:table-cell">
+                        {{ log.ip_address ?? '-' }}
+                    </td>
+                </tr>
+                <tr v-if="logs.data.length === 0">
+                    <td class="p-3 text-muted-foreground" colspan="5">
+                        Tidak ada catatan yang cocok. Hapus filter aksi untuk
+                        melihat seluruh riwayat.
+                    </td>
+                </tr>
+            </tbody>
+        </TableShell>
 
         <div class="flex flex-wrap gap-1">
             <template v-for="link in logs.links" :key="link.label">

@@ -44,11 +44,16 @@ class AnnouncementTest extends TestCase
         $this->assertSame(1, AuditLog::where('action', 'announcement.created')->count());
     }
 
-    public function test_wm_and_members_cannot_manage_announcements(): void
+    public function test_wm_can_manage_announcements_but_members_cannot(): void
     {
         $this->actingAs($this->userWithRole('wm'))
-            ->get(route('admin.announcements.index'))
-            ->assertForbidden();
+            ->post(route('admin.announcements.store'), [
+                'title' => 'Pengumuman WM',
+                'content' => 'Dibuat oleh Wakil Manajer.',
+            ])
+            ->assertRedirect();
+
+        $this->assertSame(1, Announcement::count());
 
         $this->actingAs($this->userWithRole('user'))
             ->post(route('admin.announcements.store'), [
@@ -57,7 +62,7 @@ class AnnouncementTest extends TestCase
             ])
             ->assertForbidden();
 
-        $this->assertSame(0, Announcement::count());
+        $this->assertSame(1, Announcement::count());
     }
 
     public function test_admin_can_publish_and_unpublish_an_announcement(): void

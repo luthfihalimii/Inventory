@@ -79,6 +79,19 @@ class CancelBorrowRequestTest extends TestCase
         $this->assertSame('cancelled', $loan->fresh()->status);
     }
 
+    public function test_staff_can_cancel_a_pending_request(): void
+    {
+        $request = BorrowRequest::factory()->create();
+        $admin = $this->userWithRole('admin_korlab');
+
+        $this->actingAs($admin)
+            ->put(route('borrowing.cancel', $request), ['reason' => 'Dibatalkan admin.'])
+            ->assertRedirect();
+
+        $this->assertSame('cancelled', $request->fresh()->status);
+        $this->assertSame('Dibatalkan admin.', $request->fresh()->cancellation_reason);
+    }
+
     public function test_other_users_cannot_cancel(): void
     {
         $request = BorrowRequest::factory()->create();

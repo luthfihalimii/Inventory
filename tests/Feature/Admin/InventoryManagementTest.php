@@ -51,17 +51,17 @@ class InventoryManagementTest extends TestCase
         ];
     }
 
-    public function test_only_admin_korlab_can_manage_inventory(): void
+    public function test_admin_and_wm_can_manage_inventory(): void
     {
         $this->actingAs($this->userWithRole('user'))
             ->get(route('admin.inventory.items.index'))
             ->assertForbidden();
 
-        $this->actingAs($this->userWithRole('wm'))
-            ->get(route('admin.inventory.items.index'))
-            ->assertForbidden();
-
         $this->actingAs($this->admin())
+            ->get(route('admin.inventory.items.index'))
+            ->assertOk();
+
+        $this->actingAs($this->userWithRole('wm'))
             ->get(route('admin.inventory.items.index'))
             ->assertOk();
     }

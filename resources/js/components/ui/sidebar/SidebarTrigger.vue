@@ -18,11 +18,12 @@ const { isMobile, state, toggleSidebar } = useSidebar()
     data-slot="sidebar-trigger"
     variant="ghost"
     size="icon"
-    :class="cn('h-7 w-7', props.class)"
+    aria-label="Buka menu navigasi"
+    :class="cn('h-11 w-auto px-2.5 md:h-9 md:min-h-11 md:w-9 md:px-0', props.class)"
     @click="toggleSidebar"
   >
     <PanelLeftOpen v-if="isMobile || state === 'collapsed'" />
     <PanelLeftClose v-else />
-    <span class="sr-only">Toggle sidebar</span>
+    <span class="text-sm font-medium md:sr-only">Menu</span>
   </Button>
 </template>

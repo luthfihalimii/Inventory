@@ -2,6 +2,8 @@
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import { ref } from 'vue';
 import InputError from '@/components/InputError.vue';
+import PageHeader from '@/components/PageHeader.vue';
+import TableShell from '@/components/TableShell.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -237,224 +239,297 @@ function formatDate(value: string): string {
 <template>
     <Head :title="`Checkout ${transaction.reference_no ?? ``}`" />
 
-    <div class="flex flex-col gap-6 p-4">
-        <div class="flex flex-wrap items-start justify-between gap-4">
-            <div>
-                <h1 class="text-xl font-semibold">
-                    {{ transaction.reference_no ?? `#${transaction.id}` }}
-                </h1>
-                <p class="text-sm text-muted-foreground">
-                    {{ transaction.member.name }}
-                    ({{ transaction.member.nrp }}) ·
-                    {{ transaction.member.division ?? '-' }}
-                </p>
-            </div>
-            <Button variant="outline" as-child>
-                <Link href="/admin/checkout">Kembali</Link>
-            </Button>
-        </div>
-
-        <dl class="grid gap-3 rounded-lg border p-4 text-sm sm:grid-cols-3">
-            <div>
-                <dt class="text-muted-foreground">Mulai pinjam</dt>
-                <dd>{{ formatDate(transaction.pickup_at) }}</dd>
-            </div>
-            <div>
-                <dt class="text-muted-foreground">Tenggat kembali</dt>
-                <dd>{{ formatDate(transaction.return_at) }}</dd>
-            </div>
-            <div>
-                <dt class="text-muted-foreground">Lokasi penggunaan</dt>
-                <dd>{{ transaction.usage_location || '-' }}</dd>
-            </div>
-        </dl>
-
-        <div v-if="canCheckout" class="grid gap-3 rounded-lg border p-4">
-            <Label for="scan_token">Scan QR / masukkan token</Label>
-            <div class="flex flex-wrap gap-2">
-                <Input
-                    id="scan_token"
-                    v-model="scanToken"
-                    class="max-w-sm font-mono"
-                    placeholder="Token aset atau barang"
-                    @keyup.enter="scan"
-                />
-                <Button
-                    type="button"
-                    variant="outline"
-                    :disabled="scanning"
-                    @click="scan"
-                >
-                    Periksa
+    <div
+        class="flex min-w-0 flex-col gap-6 p-4 [&_button]:h-11 [&_button]:rounded-xl"
+    >
+        <PageHeader
+            :title="transaction.reference_no ?? `#${transaction.id}`"
+            :description="`${transaction.member.name} (${transaction.member.nrp}) · ${transaction.member.division ?? '-'}`"
+        >
+            <template #actions>
+                <Button variant="outline" as-child>
+                    <Link href="/admin/checkout">Kembali</Link>
                 </Button>
-            </div>
-            <p
-                v-if="scanMessage"
-                class="text-sm"
-                :class="
-                    scanMessage.ok ? 'text-emerald-600' : 'text-destructive'
-                "
+            </template>
+        </PageHeader>
+
+        <form @submit.prevent="submit">
+            <div
+                class="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,24rem)]"
             >
-                {{ scanMessage.text }}
-            </p>
-        </div>
-
-        <p v-else class="rounded-lg border p-4 text-sm text-muted-foreground">
-            Transaksi ini tidak bisa di-checkout (status tidak siap atau jadwal
-            sudah lewat).
-        </p>
-
-        <form class="grid gap-4" @submit.prevent="submit">
-            <div class="overflow-x-auto rounded-lg border">
-                <table class="w-full text-sm">
-                    <thead class="bg-muted/50 text-left">
-                        <tr>
-                            <th class="p-3">Serah</th>
-                            <th class="p-3">Kode</th>
-                            <th class="p-3">Nama</th>
-                            <th class="p-3">Unit</th>
-                            <th class="p-3">Jumlah</th>
-                            <th class="p-3">Kondisi</th>
-                            <th class="p-3">Catatan</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr
-                            v-for="entry in entries"
-                            :key="entry.reservation_id"
-                            class="border-t"
-                        >
-                            <td class="p-3">
-                                <input
-                                    v-model="entry.delivered"
-                                    type="checkbox"
-                                    :disabled="!canCheckout"
-                                />
-                            </td>
-                            <td class="p-3 font-mono">
-                                {{ entry.code ?? '-' }}
-                            </td>
-                            <td class="p-3">
-                                {{ entry.name ?? '-' }}
-                                <span
-                                    v-if="
-                                        entry.tracking_method === 'serialized'
-                                    "
-                                    class="block text-xs text-muted-foreground"
-                                >
-                                    {{ entry.asset_code ?? 'Belum ada unit' }}
-                                    <span v-if="entry.swap">(tukar)</span>
-                                </span>
-                            </td>
-                            <td class="p-3">
-                                {{
-                                    entry.tracking_method === 'serialized'
-                                        ? 'Per unit'
-                                        : 'Jumlah'
-                                }}
-                            </td>
-                            <td class="p-3">
-                                <Input
-                                    v-if="entry.tracking_method === 'quantity'"
-                                    v-model.number="entry.quantity"
-                                    type="number"
-                                    class="w-24"
-                                    min="1"
-                                    :max="entry.reserved_quantity"
-                                    :disabled="!canCheckout"
-                                />
-                                <span v-else>1</span>
-                                <span
-                                    class="block text-xs text-muted-foreground"
-                                >
-                                    reservasi {{ entry.reserved_quantity }}
-                                </span>
-                            </td>
-                            <td class="p-3">
-                                <select
-                                    v-model="entry.condition_out"
-                                    class="h-9 rounded-md border bg-transparent px-2 text-sm"
-                                    :disabled="!canCheckout"
-                                >
-                                    <option value="good">Baik</option>
-                                    <option value="damaged">Rusak</option>
-                                </select>
-                            </td>
-                            <td class="p-3">
-                                <Input
-                                    v-model="entry.notes"
-                                    :disabled="!canCheckout"
-                                />
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <div v-if="canCheckout" class="grid gap-3 rounded-lg border p-4">
-                <div class="grid gap-2 md:grid-cols-2">
-                    <label class="flex items-center gap-2 text-sm">
-                        <input
-                            v-model="form.checklist.identity_verified"
-                            type="checkbox"
-                        />
-                        Identitas peminjam diverifikasi
-                    </label>
-                    <label class="flex items-center gap-2 text-sm">
-                        <input
-                            v-model="form.checklist.condition_checked"
-                            type="checkbox"
-                        />
-                        Kondisi barang diperiksa bersama
-                    </label>
-                    <label class="flex items-center gap-2 text-sm">
-                        <input
-                            v-model="form.checklist.sop_explained"
-                            type="checkbox"
-                        />
-                        SOP dijelaskan
-                    </label>
-                </div>
-
-                <div class="grid gap-2">
-                    <Label for="reason">Alasan partial / tukar unit</Label>
-                    <Input id="reason" v-model="form.reason" />
-                    <InputError :message="form.errors.reason" />
-                </div>
-
-                <div class="grid gap-2">
-                    <Label for="notes">Catatan serah terima</Label>
-                    <textarea
-                        id="notes"
-                        v-model="form.notes"
-                        rows="2"
-                        class="rounded-md border bg-transparent px-3 py-2 text-sm"
-                    />
-                    <InputError :message="form.errors.notes" />
-                </div>
-
-                <div class="grid gap-2">
-                    <Label for="photos"
-                        >Foto kondisi serah terima (maks 5)</Label
+                <div class="grid min-w-0 gap-4">
+                    <section
+                        v-if="canCheckout"
+                        class="grid gap-3 rounded-2xl border bg-card p-4"
                     >
-                    <input
-                        id="photos"
-                        type="file"
-                        accept="image/jpeg,image/png,image/webp"
-                        multiple
-                        class="text-sm"
-                        @change="onPhotosChange"
-                    />
-                    <InputError :message="form.errors.photos" />
+                        <div>
+                            <h2 class="font-semibold">Scan barang</h2>
+                            <p class="mt-1 text-sm text-muted-foreground">
+                                Cocokkan token sebelum menyerahkan barang.
+                            </p>
+                        </div>
+                        <Label for="scan_token">Scan QR / masukkan token</Label>
+                        <div class="flex flex-wrap gap-2">
+                            <Input
+                                id="scan_token"
+                                v-model="scanToken"
+                                class="h-11 max-w-sm rounded-xl font-mono"
+                                placeholder="Token aset atau barang"
+                                @keydown.enter.prevent="scan"
+                            />
+                            <Button
+                                type="button"
+                                variant="outline"
+                                :disabled="scanning"
+                                @click="scan"
+                            >
+                                Periksa
+                            </Button>
+                        </div>
+                        <p
+                            v-if="scanMessage"
+                            class="text-sm font-medium"
+                            :class="
+                                scanMessage.ok
+                                    ? 'text-emerald-700 dark:text-emerald-400'
+                                    : 'text-destructive'
+                            "
+                        >
+                            {{ scanMessage.text }}
+                        </p>
+                    </section>
+
+                    <section
+                        v-else
+                        class="rounded-2xl border bg-card p-4 text-sm text-muted-foreground"
+                    >
+                        Transaksi ini tidak bisa di-checkout (status tidak siap
+                        atau jadwal sudah lewat).
+                    </section>
+
+                    <TableShell caption="Daftar barang untuk serah terima">
+                        <thead>
+                            <tr>
+                                <th class="p-3">Serah</th>
+                                <th class="p-3">Kode</th>
+                                <th class="p-3">Nama</th>
+                                <th class="p-3">Unit</th>
+                                <th class="p-3">Jumlah</th>
+                                <th class="p-3">Kondisi</th>
+                                <th class="p-3">Catatan</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr
+                                v-for="entry in entries"
+                                :key="entry.reservation_id"
+                                class="border-t"
+                            >
+                                <td class="p-3">
+                                    <label
+                                        class="flex min-h-11 min-w-11 items-center justify-center"
+                                    >
+                                        <span class="sr-only">
+                                            Serahkan
+                                            {{ entry.name ?? entry.code }}
+                                        </span>
+                                        <input
+                                            v-model="entry.delivered"
+                                            type="checkbox"
+                                            class="size-4"
+                                            :disabled="!canCheckout"
+                                        />
+                                    </label>
+                                </td>
+                                <td class="p-3 font-mono">
+                                    {{ entry.code ?? '-' }}
+                                </td>
+                                <td class="p-3">
+                                    {{ entry.name ?? '-' }}
+                                    <span
+                                        v-if="
+                                            entry.tracking_method ===
+                                            'serialized'
+                                        "
+                                        class="block text-xs text-muted-foreground"
+                                    >
+                                        {{
+                                            entry.asset_code ?? 'Belum ada unit'
+                                        }}
+                                        <span v-if="entry.swap">(tukar)</span>
+                                    </span>
+                                </td>
+                                <td class="p-3">
+                                    {{
+                                        entry.tracking_method === 'serialized'
+                                            ? 'Per unit'
+                                            : 'Jumlah'
+                                    }}
+                                </td>
+                                <td class="p-3">
+                                    <Input
+                                        v-if="
+                                            entry.tracking_method === 'quantity'
+                                        "
+                                        v-model.number="entry.quantity"
+                                        type="number"
+                                        class="h-11 w-24 rounded-xl"
+                                        min="1"
+                                        :max="entry.reserved_quantity"
+                                        :disabled="!canCheckout"
+                                    />
+                                    <span v-else>1</span>
+                                    <span
+                                        class="block text-xs text-muted-foreground"
+                                    >
+                                        reservasi {{ entry.reserved_quantity }}
+                                    </span>
+                                </td>
+                                <td class="p-3">
+                                    <select
+                                        v-model="entry.condition_out"
+                                        class="h-11 rounded-xl border bg-transparent px-2 text-sm"
+                                        :disabled="!canCheckout"
+                                    >
+                                        <option value="good">Baik</option>
+                                        <option value="damaged">Rusak</option>
+                                    </select>
+                                </td>
+                                <td class="p-3">
+                                    <Input
+                                        v-model="entry.notes"
+                                        class="h-11 min-w-36 rounded-xl"
+                                        :disabled="!canCheckout"
+                                    />
+                                </td>
+                            </tr>
+                        </tbody>
+                    </TableShell>
                 </div>
 
-                <InputError :message="form.errors.lines" />
+                <aside class="grid min-w-0 gap-4 lg:sticky lg:top-4">
+                    <section class="rounded-2xl border bg-card p-4">
+                        <h2 class="mb-4 font-semibold">Ringkasan transaksi</h2>
+                        <dl class="grid gap-4 text-sm">
+                            <div>
+                                <dt class="text-muted-foreground">Anggota</dt>
+                                <dd class="mt-1 font-medium">
+                                    {{ transaction.member.name }}
+                                </dd>
+                                <dd class="text-muted-foreground">
+                                    {{ transaction.member.nrp }} ·
+                                    {{ transaction.member.division ?? '-' }}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt class="text-muted-foreground">
+                                    Mulai pinjam
+                                </dt>
+                                <dd class="mt-1">
+                                    {{ formatDate(transaction.pickup_at) }}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt class="text-muted-foreground">
+                                    Tenggat kembali
+                                </dt>
+                                <dd class="mt-1">
+                                    {{ formatDate(transaction.return_at) }}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt class="text-muted-foreground">
+                                    Lokasi penggunaan
+                                </dt>
+                                <dd class="mt-1">
+                                    {{ transaction.usage_location || '-' }}
+                                </dd>
+                            </div>
+                        </dl>
+                    </section>
 
-                <div>
-                    <Button type="submit" :disabled="form.processing">
-                        Konfirmasi serah terima
-                    </Button>
-                </div>
+                    <section
+                        v-if="canCheckout"
+                        class="grid gap-4 rounded-2xl border bg-card p-4"
+                    >
+                        <h2 class="font-semibold">Checklist serah terima</h2>
+                        <div class="grid gap-2 md:grid-cols-2">
+                            <label
+                                class="flex min-h-11 items-center gap-2 text-sm"
+                            >
+                                <input
+                                    v-model="form.checklist.identity_verified"
+                                    type="checkbox"
+                                />
+                                Identitas peminjam diverifikasi
+                            </label>
+                            <label
+                                class="flex min-h-11 items-center gap-2 text-sm"
+                            >
+                                <input
+                                    v-model="form.checklist.condition_checked"
+                                    type="checkbox"
+                                />
+                                Kondisi barang diperiksa bersama
+                            </label>
+                            <label
+                                class="flex min-h-11 items-center gap-2 text-sm"
+                            >
+                                <input
+                                    v-model="form.checklist.sop_explained"
+                                    type="checkbox"
+                                />
+                                SOP dijelaskan
+                            </label>
+                        </div>
+
+                        <div class="grid gap-2">
+                            <Label for="reason"
+                                >Alasan partial / tukar unit</Label
+                            >
+                            <Input
+                                id="reason"
+                                v-model="form.reason"
+                                class="h-11 rounded-xl"
+                            />
+                            <InputError :message="form.errors.reason" />
+                        </div>
+
+                        <div class="grid gap-2">
+                            <Label for="notes">Catatan serah terima</Label>
+                            <textarea
+                                id="notes"
+                                v-model="form.notes"
+                                rows="2"
+                                class="rounded-xl border bg-transparent px-3 py-2 text-sm"
+                            />
+                            <InputError :message="form.errors.notes" />
+                        </div>
+
+                        <div class="grid gap-2">
+                            <Label for="photos"
+                                >Foto kondisi serah terima (maks 5)</Label
+                            >
+                            <input
+                                id="photos"
+                                type="file"
+                                accept="image/jpeg,image/png,image/webp"
+                                multiple
+                                class="text-sm"
+                                @change="onPhotosChange"
+                            />
+                            <InputError :message="form.errors.photos" />
+                        </div>
+
+                        <InputError :message="form.errors.lines" />
+
+                        <div>
+                            <Button type="submit" :disabled="form.processing">
+                                Konfirmasi serah terima
+                            </Button>
+                        </div>
+                    </section>
+                </aside>
             </div>
         </form>
     </div>

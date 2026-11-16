@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { Head, router } from '@inertiajs/vue3';
+import EmptyState from '@/components/EmptyState.vue';
+import PageHeader from '@/components/PageHeader.vue';
 import { Button } from '@/components/ui/button';
 
 type Notification = {
@@ -52,33 +54,35 @@ function markAllRead(): void {
 <template>
     <Head title="Notifikasi" />
 
-    <div class="flex flex-col gap-6 p-4">
-        <div class="flex flex-wrap items-start justify-between gap-4">
-            <div>
-                <h1 class="text-xl font-semibold">Notifikasi</h1>
-                <p class="text-sm text-muted-foreground">
-                    Pemberitahuan aktivitas peminjaman Anda.
-                </p>
-            </div>
-            <Button
-                variant="outline"
-                :disabled="!notifications.some((item) => !item.read_at)"
-                @click="markAllRead"
-            >
-                Tandai semua dibaca
-            </Button>
-        </div>
+    <div class="flex min-w-0 flex-col gap-6 p-4">
+        <PageHeader
+            title="Notifikasi"
+            description="Pembaruan pengajuan, pengembalian, dan pengumuman."
+        >
+            <template #actions>
+                <Button
+                    class="h-11 rounded-xl"
+                    variant="outline"
+                    :disabled="!notifications.some((item) => !item.read_at)"
+                    @click="markAllRead"
+                >
+                    Tandai semua dibaca
+                </Button>
+            </template>
+        </PageHeader>
 
-        <ul v-if="notifications.length > 0" class="grid gap-2">
+        <ul v-if="notifications.length > 0" class="grid gap-3">
             <li
                 v-for="notification in notifications"
                 :key="notification.id"
-                class="rounded-lg border p-4"
-                :class="notification.read_at ? '' : 'bg-muted/40'"
+                class="rounded-2xl border bg-card p-4"
+                :class="{ 'border-primary/40': !notification.read_at }"
             >
                 <div class="flex flex-wrap items-start justify-between gap-2">
                     <div>
-                        <p class="font-medium">{{ notification.title }}</p>
+                        <p class="font-semibold break-words">
+                            {{ notification.title }}
+                        </p>
                         <p
                             v-if="notification.body"
                             class="mt-1 text-sm text-muted-foreground"
@@ -92,7 +96,7 @@ function markAllRead(): void {
                 </div>
                 <Button
                     v-if="!notification.read_at"
-                    class="mt-2"
+                    class="mt-3"
                     size="sm"
                     variant="outline"
                     @click="markRead(notification)"
@@ -102,8 +106,6 @@ function markAllRead(): void {
             </li>
         </ul>
 
-        <p v-else class="text-sm text-muted-foreground">
-            Belum ada notifikasi.
-        </p>
+        <EmptyState v-else title="Belum ada notifikasi." />
     </div>
 </template>

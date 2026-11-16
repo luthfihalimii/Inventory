@@ -11,8 +11,6 @@ void createInertiaApp({
     title: (title) => (title ? `${title} - ${appName}` : appName),
     layout: (name) => {
         switch (true) {
-            case name === 'Welcome':
-                return null;
             case name === 'admin/inventory/items/Qr':
                 return null;
             case name.startsWith('auth/'):
@@ -33,7 +31,7 @@ void createInertiaApp({
         });
     },
     progress: {
-        color: '#4B5563',
+        color: '#2563EB',
     },
 });
 

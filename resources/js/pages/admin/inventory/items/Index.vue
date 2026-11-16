@@ -2,6 +2,9 @@
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { ref, watch } from 'vue';
 import InputError from '@/components/InputError.vue';
+import PageHeader from '@/components/PageHeader.vue';
+import StatusBadge from '@/components/StatusBadge.vue';
+import TableShell from '@/components/TableShell.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -149,41 +152,44 @@ function submit(): void {
     <Head title="Kelola barang" />
 
     <div class="flex flex-col gap-6 p-4">
-        <div>
-            <h1 class="text-xl font-semibold">Kelola barang</h1>
-            <p class="text-sm text-muted-foreground">
-                Kategori, unit, dan ketersediaan inventaris.
-            </p>
-        </div>
+        <PageHeader
+            title="Kelola barang"
+            description="Kategori, unit, dan ketersediaan inventaris."
+        />
 
-        <form class="grid gap-2 md:grid-cols-4" @submit.prevent="applyFilters">
-            <Input v-model="search" placeholder="Cari nama atau kode" />
-            <select
-                v-model="categoryId"
-                class="h-9 rounded-md border bg-transparent px-3 text-sm"
+        <section class="rounded-2xl border bg-card p-4">
+            <form
+                class="grid gap-3 md:grid-cols-4"
+                @submit.prevent="applyFilters"
             >
-                <option :value="null">Semua kategori</option>
-                <option
-                    v-for="category in categories"
-                    :key="category.id"
-                    :value="category.id"
+                <Input v-model="search" placeholder="Cari nama atau kode" />
+                <select
+                    v-model="categoryId"
+                    class="h-11 rounded-xl border bg-transparent px-3 text-sm"
                 >
-                    {{ category.name }}
-                </option>
-            </select>
-            <select
-                v-model="status"
-                class="h-9 rounded-md border bg-transparent px-3 text-sm"
-            >
-                <option value="">Semua status</option>
-                <option value="active">Aktif</option>
-                <option value="inactive">Nonaktif</option>
-            </select>
-            <Button type="submit" variant="outline">Terapkan</Button>
-        </form>
+                    <option :value="null">Semua kategori</option>
+                    <option
+                        v-for="category in categories"
+                        :key="category.id"
+                        :value="category.id"
+                    >
+                        {{ category.name }}
+                    </option>
+                </select>
+                <select
+                    v-model="status"
+                    class="h-11 rounded-xl border bg-transparent px-3 text-sm"
+                >
+                    <option value="">Semua status</option>
+                    <option value="active">Aktif</option>
+                    <option value="inactive">Nonaktif</option>
+                </select>
+                <Button type="submit" variant="outline">Terapkan</Button>
+            </form>
+        </section>
 
         <form
-            class="grid gap-3 rounded-lg border p-4"
+            class="grid gap-3 rounded-2xl border bg-card p-5"
             @submit.prevent="submitImport"
         >
             <div>
@@ -214,7 +220,7 @@ function submit(): void {
         </form>
 
         <form
-            class="grid gap-4 rounded-lg border p-4 md:grid-cols-3"
+            class="grid gap-4 rounded-2xl border bg-card p-5 md:grid-cols-3"
             @submit.prevent="submit"
         >
             <div class="md:col-span-3">
@@ -240,7 +246,7 @@ function submit(): void {
                 <select
                     id="tracking_method"
                     v-model="form.tracking_method"
-                    class="h-9 rounded-md border bg-transparent px-3 text-sm"
+                    class="h-11 rounded-xl border bg-transparent px-3 text-sm"
                 >
                     <option value="serialized">Per unit</option>
                     <option value="quantity">Berdasarkan jumlah</option>
@@ -260,7 +266,7 @@ function submit(): void {
                 <select
                     id="category_id"
                     v-model="form.category_id"
-                    class="h-9 rounded-md border bg-transparent px-3 text-sm"
+                    class="h-11 rounded-xl border bg-transparent px-3 text-sm"
                     required
                 >
                     <option
@@ -279,7 +285,7 @@ function submit(): void {
                 <select
                     id="location_id"
                     v-model="form.location_id"
-                    class="h-9 rounded-md border bg-transparent px-3 text-sm"
+                    class="h-11 rounded-xl border bg-transparent px-3 text-sm"
                     required
                 >
                     <option
@@ -331,7 +337,7 @@ function submit(): void {
                 <select
                     id="status"
                     v-model="form.status"
-                    class="h-9 rounded-md border bg-transparent px-3 text-sm"
+                    class="h-11 rounded-xl border bg-transparent px-3 text-sm"
                 >
                     <option value="active">Aktif</option>
                     <option value="inactive">Nonaktif</option>
@@ -374,83 +380,85 @@ function submit(): void {
             </Button>
         </div>
 
-        <div class="overflow-x-auto rounded-lg border">
-            <table class="w-full text-sm">
-                <thead class="bg-muted/50 text-left">
-                    <tr>
-                        <th class="p-3"></th>
-                        <th class="p-3">Kode</th>
-                        <th class="p-3">Nama</th>
-                        <th class="p-3">Kategori</th>
-                        <th class="p-3">Tersedia</th>
-                        <th class="p-3">Status</th>
-                        <th class="p-3"></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr
-                        v-for="item in items.data"
-                        :key="item.id"
-                        class="border-t"
-                    >
-                        <td class="p-3">
+        <TableShell caption="Daftar barang inventaris">
+            <thead>
+                <tr>
+                    <th class="p-3"></th>
+                    <th class="p-3">Kode</th>
+                    <th class="p-3">Nama</th>
+                    <th class="p-3">Kategori</th>
+                    <th class="p-3">Tersedia</th>
+                    <th class="p-3">Status</th>
+                    <th class="p-3"></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr v-for="item in items.data" :key="item.id" class="border-t">
+                    <td class="p-3">
+                        <label class="flex min-h-11 min-w-11 items-center">
                             <input
                                 v-model="selected"
                                 type="checkbox"
                                 :value="item.id"
                                 :aria-label="`Pilih ${item.name}`"
                             />
-                        </td>
-                        <td class="p-3 font-mono">{{ item.code }}</td>
-                        <td class="p-3">{{ item.name }}</td>
-                        <td class="p-3">{{ item.category?.name ?? '-' }}</td>
-                        <td class="p-3">
-                            {{ item.availability.available }} /
-                            {{ item.availability.total }}
-                        </td>
-                        <td class="p-3">
-                            {{
+                        </label>
+                    </td>
+                    <td class="p-3 font-mono">{{ item.code }}</td>
+                    <td class="p-3">{{ item.name }}</td>
+                    <td class="p-3">{{ item.category?.name ?? '-' }}</td>
+                    <td class="p-3">
+                        {{ item.availability.available }} /
+                        {{ item.availability.total }}
+                    </td>
+                    <td class="p-3">
+                        <StatusBadge
+                            :label="
                                 item.status === 'active' ? 'Aktif' : 'Nonaktif'
-                            }}
-                        </td>
-                        <td class="flex flex-wrap justify-end gap-2 p-3">
-                            <Button
-                                v-if="item.tracking_method === 'serialized'"
-                                variant="outline"
-                                size="sm"
-                                as-child
+                            "
+                            :tone="
+                                item.status === 'active' ? 'success' : 'neutral'
+                            "
+                        />
+                    </td>
+                    <td class="flex flex-wrap justify-end gap-2 p-3">
+                        <Button
+                            v-if="item.tracking_method === 'serialized'"
+                            variant="outline"
+                            size="sm"
+                            as-child
+                        >
+                            <Link
+                                :href="`/admin/inventory/assets?item_id=${item.id}`"
                             >
-                                <Link
-                                    :href="`/admin/inventory/assets?item_id=${item.id}`"
-                                >
-                                    Unit
-                                </Link>
-                            </Button>
-                            <Button variant="outline" size="sm" as-child>
-                                <Link
-                                    :href="`/admin/inventory/items/${item.id}/qr`"
-                                    target="_blank"
-                                >
-                                    QR
-                                </Link>
-                            </Button>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                @click="startEdit(item)"
+                                Unit
+                            </Link>
+                        </Button>
+                        <Button variant="outline" size="sm" as-child>
+                            <Link
+                                :href="`/admin/inventory/items/${item.id}/qr`"
+                                target="_blank"
                             >
-                                Ubah
-                            </Button>
-                        </td>
-                    </tr>
-                    <tr v-if="items.data.length === 0">
-                        <td class="p-3 text-muted-foreground" colspan="7">
-                            Belum ada barang.
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
+                                QR
+                            </Link>
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            @click="startEdit(item)"
+                        >
+                            Ubah
+                        </Button>
+                    </td>
+                </tr>
+                <tr v-if="items.data.length === 0">
+                    <td class="p-3 text-muted-foreground" colspan="7">
+                        Tidak ada barang yang cocok. Ubah filter atau tambahkan
+                        barang melalui formulir.
+                    </td>
+                </tr>
+            </tbody>
+        </TableShell>
 
         <div class="flex flex-wrap gap-1">
             <template v-for="link in items.links" :key="link.label">

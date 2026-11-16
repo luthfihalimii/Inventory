@@ -2,8 +2,12 @@
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 import InputError from '@/components/InputError.vue';
+import PageHeader from '@/components/PageHeader.vue';
+import StatusBadge from '@/components/StatusBadge.vue';
+import TableShell from '@/components/TableShell.vue';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import type { StatusTone } from '@/types';
 
 type ApprovalRequest = {
     id: number;
@@ -65,6 +69,23 @@ const cancelErrors = computed(
 const showReject = ref(false);
 const showCancel = ref(false);
 
+const membershipStatusLabel: Record<string, string> = {
+    active: 'Aktif',
+    inactive: 'Nonaktif',
+};
+
+const borrowingStatusLabel: Record<string, string> = {
+    eligible: 'Dapat meminjam',
+    borrowing_blocked: 'Diblokir',
+};
+
+const statusTone: Record<string, StatusTone> = {
+    active: 'success',
+    inactive: 'neutral',
+    eligible: 'success',
+    borrowing_blocked: 'danger',
+};
+
 function cancelRequest(): void {
     cancelForm.put(`/peminjaman/${props.request.id}/cancel`);
 }
@@ -92,98 +113,152 @@ function formatDate(value: string): string {
 <template>
     <Head :title="request.reference_no ?? 'Detail pengajuan'" />
 
-    <div class="flex flex-col gap-6 p-4">
-        <div class="flex flex-wrap items-start justify-between gap-4">
-            <div>
-                <h1 class="text-xl font-semibold">
-                    {{ request.reference_no ?? `#${request.id}` }}
-                </h1>
-                <p class="text-sm text-muted-foreground">
-                    {{
-                        request.category === 'urgent' ? 'Mendadak' : 'Terjadwal'
-                    }}
-                    · {{ request.member.name }} ({{ request.member.nrp }}) ·
-                    {{ request.member.division ?? '-' }}
-                </p>
-            </div>
-            <Button variant="outline" as-child>
-                <Link href="/admin/approval">Kembali</Link>
-            </Button>
+    <div
+        class="flex min-w-0 flex-col gap-6 p-4 [&_button]:h-11 [&_button]:rounded-xl"
+    >
+        <PageHeader
+            :title="request.reference_no ?? `#${request.id}`"
+            :description="`${request.category === 'urgent' ? 'Mendadak' : 'Terjadwal'} · ${request.member.name} (${request.member.nrp}) · ${request.member.division ?? '-'}`"
+        >
+            <template #actions>
+                <Button variant="outline" as-child>
+                    <Link href="/admin/approval">Kembali</Link>
+                </Button>
+            </template>
+        </PageHeader>
+
+        <div class="grid gap-4 lg:grid-cols-2">
+            <section class="rounded-2xl border bg-card p-4 md:p-5">
+                <h2 class="mb-4 font-semibold">Detail pengajuan</h2>
+                <dl class="grid gap-4 text-sm sm:grid-cols-2">
+                    <div>
+                        <dt class="text-muted-foreground">Mulai pinjam</dt>
+                        <dd class="mt-1 font-medium">
+                            {{ formatDate(request.pickup_at) }}
+                        </dd>
+                    </div>
+                    <div>
+                        <dt class="text-muted-foreground">Tenggat kembali</dt>
+                        <dd class="mt-1 font-medium">
+                            {{ formatDate(request.return_at) }}
+                        </dd>
+                    </div>
+                    <div class="sm:col-span-2">
+                        <dt class="text-muted-foreground">Lokasi penggunaan</dt>
+                        <dd class="mt-1">
+                            {{ request.usage_location || '-' }}
+                        </dd>
+                    </div>
+                    <div class="sm:col-span-2">
+                        <dt class="text-muted-foreground">Tujuan / alasan</dt>
+                        <dd class="mt-1">{{ request.purpose || '-' }}</dd>
+                    </div>
+                    <div class="sm:col-span-2">
+                        <dt class="text-muted-foreground">Keterangan</dt>
+                        <dd class="mt-1">{{ request.notes || '-' }}</dd>
+                    </div>
+                </dl>
+            </section>
+
+            <section class="rounded-2xl border bg-card p-4 md:p-5">
+                <h2 class="mb-4 font-semibold">Status anggota</h2>
+                <dl class="grid gap-4 text-sm">
+                    <div>
+                        <dt class="text-muted-foreground">Nama dan NRP</dt>
+                        <dd class="mt-1 font-medium">
+                            {{ request.member.name }} ({{ request.member.nrp }})
+                        </dd>
+                    </div>
+                    <div>
+                        <dt class="text-muted-foreground">Divisi</dt>
+                        <dd class="mt-1">
+                            {{ request.member.division ?? '-' }}
+                        </dd>
+                    </div>
+                    <div>
+                        <dt class="text-muted-foreground">
+                            Status keanggotaan
+                        </dt>
+                        <dd class="mt-2">
+                            <StatusBadge
+                                :label="
+                                    membershipStatusLabel[
+                                        request.member.membership_status
+                                    ] ?? request.member.membership_status
+                                "
+                                :tone="
+                                    statusTone[
+                                        request.member.membership_status
+                                    ] ?? 'neutral'
+                                "
+                            />
+                        </dd>
+                    </div>
+                    <div>
+                        <dt class="text-muted-foreground">Status peminjaman</dt>
+                        <dd class="mt-2">
+                            <StatusBadge
+                                :label="
+                                    borrowingStatusLabel[
+                                        request.member.borrowing_status
+                                    ] ?? request.member.borrowing_status
+                                "
+                                :tone="
+                                    statusTone[
+                                        request.member.borrowing_status
+                                    ] ?? 'neutral'
+                                "
+                            />
+                        </dd>
+                    </div>
+                </dl>
+            </section>
         </div>
 
-        <dl class="grid gap-3 rounded-lg border p-4 text-sm sm:grid-cols-2">
-            <div>
-                <dt class="text-muted-foreground">Mulai pinjam</dt>
-                <dd>{{ formatDate(request.pickup_at) }}</dd>
-            </div>
-            <div>
-                <dt class="text-muted-foreground">Tenggat kembali</dt>
-                <dd>{{ formatDate(request.return_at) }}</dd>
-            </div>
-            <div>
-                <dt class="text-muted-foreground">Status anggota</dt>
-                <dd>
-                    {{ request.member.membership_status }} /
-                    {{ request.member.borrowing_status }}
-                </dd>
-            </div>
-            <div>
-                <dt class="text-muted-foreground">Lokasi penggunaan</dt>
-                <dd>{{ request.usage_location || '-' }}</dd>
-            </div>
-            <div class="sm:col-span-2">
-                <dt class="text-muted-foreground">Tujuan / alasan</dt>
-                <dd>{{ request.purpose || '-' }}</dd>
-            </div>
-            <div class="sm:col-span-2">
-                <dt class="text-muted-foreground">Keterangan</dt>
-                <dd>{{ request.notes || '-' }}</dd>
-            </div>
-        </dl>
-
-        <div class="overflow-x-auto rounded-lg border">
-            <table class="w-full text-sm">
-                <thead class="bg-muted/50 text-left">
-                    <tr>
-                        <th class="p-3">Kode</th>
-                        <th class="p-3">Nama</th>
-                        <th class="p-3">Metode</th>
-                        <th class="p-3">Diminta</th>
-                        <th class="p-3">Tersedia periode</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr
-                        v-for="line in request.items"
-                        :key="line.item_id"
-                        class="border-t"
+        <TableShell caption="Daftar barang dan ketersediaan pada pengajuan">
+            <thead>
+                <tr>
+                    <th class="p-3">Kode</th>
+                    <th class="p-3">Nama</th>
+                    <th class="p-3">Metode</th>
+                    <th class="p-3">Diminta</th>
+                    <th class="p-3">Tersedia periode</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr
+                    v-for="line in request.items"
+                    :key="line.item_id"
+                    class="border-t"
+                >
+                    <td class="p-3 font-mono">{{ line.code ?? '-' }}</td>
+                    <td class="p-3">{{ line.name ?? '-' }}</td>
+                    <td class="p-3">
+                        {{
+                            line.tracking_method === 'serialized'
+                                ? 'Per unit'
+                                : 'Jumlah'
+                        }}
+                    </td>
+                    <td class="p-3">{{ line.quantity }}</td>
+                    <td
+                        class="p-3"
+                        :class="
+                            line.available < line.quantity
+                                ? 'text-destructive'
+                                : ''
+                        "
                     >
-                        <td class="p-3 font-mono">{{ line.code ?? '-' }}</td>
-                        <td class="p-3">{{ line.name ?? '-' }}</td>
-                        <td class="p-3">
-                            {{
-                                line.tracking_method === 'serialized'
-                                    ? 'Per unit'
-                                    : 'Jumlah'
-                            }}
-                        </td>
-                        <td class="p-3">{{ line.quantity }}</td>
-                        <td
-                            class="p-3"
-                            :class="
-                                line.available < line.quantity
-                                    ? 'text-destructive'
-                                    : ''
-                            "
-                        >
-                            {{ line.available }}
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
+                        {{ line.available }}
+                    </td>
+                </tr>
+            </tbody>
+        </TableShell>
 
-        <div v-if="request.approval" class="rounded-lg border p-4 text-sm">
+        <section
+            v-if="request.approval"
+            class="rounded-2xl border bg-card p-4 text-sm"
+        >
             <p class="font-medium">
                 {{
                     request.approval.decision === 'approved'
@@ -198,9 +273,12 @@ function formatDate(value: string): string {
             <p v-if="request.approval.notes" class="mt-2">
                 {{ request.approval.notes }}
             </p>
-        </div>
+        </section>
 
-        <div v-if="canDecide" class="flex flex-col gap-3 rounded-lg border p-4">
+        <section
+            v-if="canDecide"
+            class="flex flex-col gap-3 rounded-2xl border bg-card p-4"
+        >
             <div class="flex flex-wrap gap-2">
                 <Button :disabled="approveForm.processing" @click="approve">
                     Setujui
@@ -219,7 +297,7 @@ function formatDate(value: string): string {
                     id="notes"
                     v-model="rejectForm.notes"
                     rows="3"
-                    class="rounded-md border bg-transparent px-3 py-2 text-sm"
+                    class="rounded-xl border bg-transparent px-3 py-2 text-sm"
                     required
                 />
                 <InputError :message="rejectForm.errors.notes" />
@@ -233,11 +311,11 @@ function formatDate(value: string): string {
                     </Button>
                 </div>
             </form>
-        </div>
+        </section>
 
-        <div
+        <section
             v-if="['pending_approval', 'approved'].includes(request.status)"
-            class="flex flex-col gap-3 rounded-lg border p-4"
+            class="flex flex-col gap-3 rounded-2xl border bg-card p-4"
         >
             <h2 class="font-medium">Batalkan pengajuan</h2>
             <div>
@@ -255,7 +333,7 @@ function formatDate(value: string): string {
                     id="cancel_reason"
                     v-model="cancelForm.reason"
                     rows="3"
-                    class="rounded-md border bg-transparent px-3 py-2 text-sm"
+                    class="rounded-xl border bg-transparent px-3 py-2 text-sm"
                     required
                 />
                 <InputError :message="cancelForm.errors.reason" />
@@ -270,6 +348,6 @@ function formatDate(value: string): string {
                     </Button>
                 </div>
             </form>
-        </div>
+        </section>
     </div>
 </template>

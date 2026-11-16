@@ -1,9 +1,13 @@
 <script setup lang="ts">
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
+import EmptyState from '@/components/EmptyState.vue';
 import InputError from '@/components/InputError.vue';
+import PageHeader from '@/components/PageHeader.vue';
+import StatusBadge from '@/components/StatusBadge.vue';
+import TableShell from '@/components/TableShell.vue';
 import { Button } from '@/components/ui/button';
-import type { Paginated } from '@/types';
+import type { Paginated, StatusTone } from '@/types';
 
 type Extension = {
     id: number;
@@ -82,99 +86,115 @@ const statusLabel: Record<string, string> = {
     approved: 'Disetujui',
     rejected: 'Ditolak',
 };
+
+const statusTone: Record<string, StatusTone> = {
+    pending: 'warning',
+    approved: 'success',
+    rejected: 'danger',
+};
 </script>
 
 <template>
     <Head title="Perpanjangan pinjaman" />
 
-    <div class="flex flex-col gap-6 p-4">
-        <div>
-            <h1 class="text-xl font-semibold">Perpanjangan pinjaman</h1>
-            <p class="text-sm text-muted-foreground">
-                Persetujuan mengecek ulang ketersediaan barang untuk periode
-                perpanjangan.
-            </p>
-        </div>
+    <div class="flex min-w-0 flex-col gap-6 p-4">
+        <PageHeader
+            title="Perpanjangan pinjaman"
+            description="Persetujuan mengecek ulang ketersediaan barang untuk periode perpanjangan."
+        />
 
         <InputError :message="error" />
 
-        <div class="overflow-x-auto rounded-lg border">
-            <table class="w-full text-sm">
-                <thead class="bg-muted/50 text-left">
-                    <tr>
-                        <th class="p-3">Referensi</th>
-                        <th class="p-3">Anggota</th>
-                        <th class="p-3">Tenggat saat ini</th>
-                        <th class="p-3">Tenggat baru</th>
-                        <th class="p-3">Alasan</th>
-                        <th class="p-3">Status</th>
-                        <th class="p-3"></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr
-                        v-for="extension in extensions.data"
-                        :key="extension.id"
-                        class="border-t align-top"
-                    >
-                        <td class="p-3 font-mono">
-                            {{ extension.loan.reference_no ?? '-' }}
-                        </td>
-                        <td class="p-3">
-                            {{ extension.loan.member.name }}
-                            <span class="block text-xs text-muted-foreground">
-                                {{ extension.loan.member.nrp }}
-                            </span>
-                        </td>
-                        <td class="p-3 whitespace-nowrap">
-                            {{ formatDate(extension.current_due_at) }}
-                        </td>
-                        <td class="p-3 whitespace-nowrap">
-                            {{ formatDate(extension.requested_due_at) }}
-                        </td>
-                        <td class="p-3">{{ extension.reason }}</td>
-                        <td class="p-3">
-                            {{
+        <EmptyState
+            v-if="extensions.data.length === 0"
+            title="Belum ada pengajuan perpanjangan."
+            description="Periksa daftar pengajuan anggota untuk memantau tenggat aktif."
+        >
+            <template #actions>
+                <Button variant="outline" as-child>
+                    <Link href="/admin/approval">Lihat daftar pengajuan</Link>
+                </Button>
+            </template>
+        </EmptyState>
+
+        <TableShell
+            v-else
+            caption="Daftar pengajuan perpanjangan tenggat pinjaman"
+        >
+            <thead>
+                <tr>
+                    <th class="p-3">Referensi</th>
+                    <th class="p-3">Anggota</th>
+                    <th class="hidden p-3 lg:table-cell">Tenggat saat ini</th>
+                    <th class="hidden p-3 md:table-cell">Tenggat baru</th>
+                    <th class="hidden p-3 md:table-cell">Alasan</th>
+                    <th class="p-3">Status</th>
+                    <th class="p-3"></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr
+                    v-for="extension in extensions.data"
+                    :key="extension.id"
+                    class="border-t align-top"
+                >
+                    <td class="p-3 font-mono">
+                        {{ extension.loan.reference_no ?? '-' }}
+                    </td>
+                    <td class="p-3">
+                        {{ extension.loan.member.name }}
+                        <span class="block text-xs text-muted-foreground">
+                            {{ extension.loan.member.nrp }}
+                        </span>
+                    </td>
+                    <td class="hidden p-3 whitespace-nowrap lg:table-cell">
+                        {{ formatDate(extension.current_due_at) }}
+                    </td>
+                    <td class="hidden p-3 whitespace-nowrap md:table-cell">
+                        {{ formatDate(extension.requested_due_at) }}
+                    </td>
+                    <td class="hidden p-3 md:table-cell">
+                        {{ extension.reason }}
+                    </td>
+                    <td class="p-3">
+                        <StatusBadge
+                            :label="
                                 statusLabel[extension.status] ??
                                 extension.status
-                            }}
-                            <span
-                                v-if="extension.decision_notes"
-                                class="block text-xs text-muted-foreground"
+                            "
+                            :tone="statusTone[extension.status] ?? 'neutral'"
+                        />
+                        <span
+                            v-if="extension.decision_notes"
+                            class="block text-xs text-muted-foreground"
+                        >
+                            {{ extension.decision_notes }}
+                        </span>
+                    </td>
+                    <td class="p-3">
+                        <div
+                            v-if="extension.status === 'pending'"
+                            class="flex flex-wrap gap-2"
+                        >
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                @click="approve(extension)"
                             >
-                                {{ extension.decision_notes }}
-                            </span>
-                        </td>
-                        <td class="p-3">
-                            <div
-                                v-if="extension.status === 'pending'"
-                                class="flex flex-wrap gap-2"
+                                Setujui
+                            </Button>
+                            <Button
+                                size="sm"
+                                variant="destructive"
+                                @click="reject(extension)"
                             >
-                                <Button
-                                    size="sm"
-                                    variant="outline"
-                                    @click="approve(extension)"
-                                >
-                                    Setujui
-                                </Button>
-                                <Button
-                                    size="sm"
-                                    variant="destructive"
-                                    @click="reject(extension)"
-                                >
-                                    Tolak
-                                </Button>
-                            </div>
-                        </td>
-                    </tr>
-                    <tr v-if="extensions.data.length === 0">
-                        <td class="p-3 text-muted-foreground" colspan="7">
-                            Belum ada pengajuan perpanjangan.
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
+                                Tolak
+                            </Button>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </TableShell>
 
         <div class="flex flex-wrap gap-1">
             <template v-for="link in extensions.links" :key="link.label">

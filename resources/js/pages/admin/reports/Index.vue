@@ -2,6 +2,7 @@
 import { Head, router, usePage } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 import InputError from '@/components/InputError.vue';
+import PageHeader from '@/components/PageHeader.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -72,36 +73,45 @@ function exportUrl(type: string): string {
 <template>
     <Head title="Laporan" />
 
-    <div class="flex flex-col gap-6 p-4">
-        <div>
-            <h1 class="text-xl font-semibold">Ekspor laporan</h1>
-            <p class="text-sm text-muted-foreground">
-                Unduh CSV untuk LPJ dan pengawasan. Filter tanggal memakai
-                tanggal transaksi atau laporan masing-masing jenis.
-            </p>
-        </div>
+    <div class="flex min-w-0 flex-col gap-6 p-4">
+        <PageHeader
+            title="Ekspor laporan"
+            description="Unduh CSV untuk LPJ dan pengawasan. Filter tanggal memakai tanggal transaksi atau laporan masing-masing jenis."
+        />
 
-        <form
-            class="flex flex-wrap items-end gap-3 rounded-lg border p-4"
-            @submit.prevent="applyFilter"
-        >
-            <div class="grid gap-2">
-                <Label for="from">Dari</Label>
-                <Input id="from" v-model="from" type="date" />
-            </div>
-            <div class="grid gap-2">
-                <Label for="to">Sampai</Label>
-                <Input id="to" v-model="to" type="date" />
-            </div>
-            <Button type="submit" variant="outline">Terapkan</Button>
-            <InputError :message="error" />
-        </form>
+        <section class="rounded-2xl border bg-card p-4">
+            <form
+                class="flex flex-wrap items-end gap-3"
+                @submit.prevent="applyFilter"
+            >
+                <div class="grid gap-2">
+                    <Label for="from">Dari</Label>
+                    <Input
+                        id="from"
+                        v-model="from"
+                        type="date"
+                        class="h-11 rounded-xl"
+                    />
+                </div>
+                <div class="grid gap-2">
+                    <Label for="to">Sampai</Label>
+                    <Input
+                        id="to"
+                        v-model="to"
+                        type="date"
+                        class="h-11 rounded-xl"
+                    />
+                </div>
+                <Button type="submit" variant="outline">Terapkan</Button>
+                <InputError :message="error" />
+            </form>
+        </section>
 
         <div class="grid gap-4 md:grid-cols-2">
             <div
                 v-for="entry in exportTypes"
                 :key="entry.type"
-                class="flex flex-col gap-3 rounded-lg border p-4"
+                class="flex flex-col gap-3 rounded-2xl border bg-card p-4"
             >
                 <div>
                     <p class="font-medium">{{ entry.title }}</p>

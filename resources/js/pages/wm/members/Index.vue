@@ -2,6 +2,9 @@
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { ref } from 'vue';
 import InputError from '@/components/InputError.vue';
+import PageHeader from '@/components/PageHeader.vue';
+import StatusBadge from '@/components/StatusBadge.vue';
+import TableShell from '@/components/TableShell.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -100,20 +103,20 @@ function submit(): void {
     <Head title="Anggota" />
 
     <div class="flex flex-col gap-6 p-4">
-        <div>
-            <h1 class="text-xl font-semibold">Anggota</h1>
-            <p class="text-sm text-muted-foreground">
-                Kelola identitas anggota UKM Jurnalistik.
-            </p>
-        </div>
+        <PageHeader
+            title="Anggota"
+            description="Kelola identitas, divisi, dan status anggota UKM Jurnalistik."
+        />
 
-        <form class="flex gap-2" @submit.prevent="submitSearch">
-            <Input v-model="search" placeholder="Cari nama atau NRP" />
-            <Button type="submit" variant="outline">Cari</Button>
-        </form>
+        <section class="rounded-2xl border bg-card p-4">
+            <form class="flex flex-wrap gap-3" @submit.prevent="submitSearch">
+                <Input v-model="search" placeholder="Cari nama atau NRP" />
+                <Button type="submit" variant="outline">Cari</Button>
+            </form>
+        </section>
 
         <form
-            class="grid gap-4 rounded-lg border p-4 md:grid-cols-2"
+            class="grid gap-4 rounded-2xl border bg-card p-5 md:grid-cols-2"
             @submit.prevent="submit"
         >
             <div class="md:col-span-2">
@@ -145,7 +148,7 @@ function submit(): void {
                 <select
                     id="division_id"
                     v-model="form.division_id"
-                    class="h-9 rounded-md border bg-transparent px-3 text-sm"
+                    class="h-11 rounded-xl border bg-transparent px-3 text-sm"
                     required
                 >
                     <option
@@ -190,7 +193,7 @@ function submit(): void {
                 <select
                     id="membership_status"
                     v-model="form.membership_status"
-                    class="h-9 rounded-md border bg-transparent px-3 text-sm"
+                    class="h-11 rounded-xl border bg-transparent px-3 text-sm"
                 >
                     <option value="active">Aktif</option>
                     <option value="inactive">Nonaktif</option>
@@ -203,7 +206,7 @@ function submit(): void {
                 <select
                     id="borrowing_status"
                     v-model="form.borrowing_status"
-                    class="h-9 rounded-md border bg-transparent px-3 text-sm"
+                    class="h-11 rounded-xl border bg-transparent px-3 text-sm"
                 >
                     <option value="eligible">Boleh meminjam</option>
                     <option value="borrowing_blocked">Diblokir</option>
@@ -226,51 +229,73 @@ function submit(): void {
             </div>
         </form>
 
-        <div class="overflow-x-auto rounded-lg border">
-            <table class="w-full text-sm">
-                <thead class="bg-muted/50 text-left">
-                    <tr>
-                        <th class="p-3">NRP</th>
-                        <th class="p-3">Nama</th>
-                        <th class="p-3">Divisi</th>
-                        <th class="p-3">Status</th>
-                        <th class="p-3"></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr
-                        v-for="member in members.data"
-                        :key="member.id"
-                        class="border-t"
-                    >
-                        <td class="p-3 font-mono">{{ member.nrp }}</td>
-                        <td class="p-3">{{ member.name }}</td>
-                        <td class="p-3">{{ member.division?.name }}</td>
-                        <td class="p-3">
-                            {{
-                                member.membership_status === 'active'
-                                    ? 'Aktif'
-                                    : 'Nonaktif'
-                            }}
-                        </td>
-                        <td class="p-3 text-right">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                @click="startEdit(member)"
-                            >
-                                Ubah
-                            </Button>
-                        </td>
-                    </tr>
-                    <tr v-if="members.data.length === 0">
-                        <td class="p-3 text-muted-foreground" colspan="5">
-                            Belum ada anggota.
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
+        <TableShell caption="Daftar anggota UKM Jurnalistik">
+            <thead>
+                <tr>
+                    <th class="p-3">NRP</th>
+                    <th class="p-3">Nama</th>
+                    <th class="hidden p-3 md:table-cell">Divisi</th>
+                    <th class="p-3">Status</th>
+                    <th class="p-3"></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr
+                    v-for="member in members.data"
+                    :key="member.id"
+                    class="border-t"
+                >
+                    <td class="p-3 font-mono">{{ member.nrp }}</td>
+                    <td class="p-3">{{ member.name }}</td>
+                    <td class="hidden p-3 md:table-cell">
+                        {{ member.division?.name }}
+                    </td>
+                    <td class="p-3">
+                        <div class="flex flex-wrap gap-1">
+                            <StatusBadge
+                                :label="
+                                    member.membership_status === 'active'
+                                        ? 'Aktif'
+                                        : 'Nonaktif'
+                                "
+                                :tone="
+                                    member.membership_status === 'active'
+                                        ? 'success'
+                                        : 'neutral'
+                                "
+                            />
+                            <StatusBadge
+                                :label="
+                                    member.borrowing_status === 'eligible'
+                                        ? 'Boleh meminjam'
+                                        : 'Diblokir'
+                                "
+                                :tone="
+                                    member.borrowing_status === 'eligible'
+                                        ? 'info'
+                                        : 'danger'
+                                "
+                            />
+                        </div>
+                    </td>
+                    <td class="p-3 text-right">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            @click="startEdit(member)"
+                        >
+                            Ubah
+                        </Button>
+                    </td>
+                </tr>
+                <tr v-if="members.data.length === 0">
+                    <td class="p-3 text-muted-foreground" colspan="5">
+                        Tidak ada anggota yang cocok. Ubah pencarian atau
+                        tambahkan anggota melalui formulir.
+                    </td>
+                </tr>
+            </tbody>
+        </TableShell>
 
         <div class="flex flex-wrap gap-1">
             <template v-for="link in members.links" :key="link.label">

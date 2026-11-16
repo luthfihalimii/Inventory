@@ -13,7 +13,7 @@ Route::middleware('auth')->group(function () {
     Route::get('inventory/{item}', [CatalogController::class, 'show'])->name('inventory.show');
 });
 
-Route::middleware(['auth', 'role:admin_korlab'])->prefix('admin/inventory')->name('admin.inventory.')->group(function () {
+Route::middleware(['auth', 'role:admin_korlab,wm'])->prefix('admin/inventory')->name('admin.inventory.')->group(function () {
     Route::get('items', [ItemController::class, 'index'])->name('items.index');
     Route::get('items/qr', [ItemController::class, 'qrBatch'])->name('items.qr.batch');
     Route::post('items', [ItemController::class, 'store'])->name('items.store');

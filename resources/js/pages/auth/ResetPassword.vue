@@ -34,9 +34,12 @@ defineProps<{
         <div class="grid gap-2">
             <p class="text-sm text-muted-foreground">{{ email }}</p>
 
-            <Label for="password">Password baru</Label>
+            <Label for="password" class="text-[13px] font-medium"
+                >Password baru</Label
+            >
             <PasswordInput
                 id="password"
+                class="h-11 rounded-xl"
                 name="password"
                 required
                 autocomplete="new-password"
@@ -45,16 +48,23 @@ defineProps<{
         </div>
 
         <div class="grid gap-2">
-            <Label for="password_confirmation">Ulangi password baru</Label>
+            <Label for="password_confirmation" class="text-[13px] font-medium"
+                >Ulangi password baru</Label
+            >
             <PasswordInput
                 id="password_confirmation"
+                class="h-11 rounded-xl"
                 name="password_confirmation"
                 required
                 autocomplete="new-password"
             />
         </div>
 
-        <Button type="submit" class="w-full" :disabled="processing">
+        <Button
+            type="submit"
+            class="h-11 w-full rounded-xl"
+            :disabled="processing"
+        >
             <Spinner v-if="processing" />
             Simpan password
         </Button>

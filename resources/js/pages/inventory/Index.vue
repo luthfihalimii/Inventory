@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { Head, Link, router } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { MapPin, Tag } from '@lucide/vue';
+import { computed, ref } from 'vue';
+import EmptyState from '@/components/EmptyState.vue';
+import PageHeader from '@/components/PageHeader.vue';
+import StatusBadge from '@/components/StatusBadge.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { Availability, Paginated } from '@/types';
@@ -33,6 +37,12 @@ defineOptions({
 const search = ref(props.filters.q);
 const categoryId = ref<number | null>(props.filters.category_id);
 const status = ref(props.filters.status || 'active');
+const isDefaultView = computed(
+    () =>
+        !props.filters.q &&
+        !props.filters.category_id &&
+        ['', 'active'].includes(props.filters.status),
+);
 
 function applyFilters(): void {
     router.get(
@@ -50,86 +60,113 @@ function applyFilters(): void {
 <template>
     <Head title="Inventaris" />
 
-    <div class="flex flex-col gap-6 p-4">
-        <div>
-            <h1 class="text-xl font-semibold">Inventaris</h1>
-            <p class="text-sm text-muted-foreground">
-                Katalog barang UKM Jurnalistik dan ketersediaannya.
-            </p>
-        </div>
+    <div class="flex min-w-0 flex-col gap-6 p-4">
+        <PageHeader
+            title="Inventaris"
+            description="Katalog barang UKM Jurnalistik dan ketersediaannya."
+        />
 
-        <form class="grid gap-2 md:grid-cols-4" @submit.prevent="applyFilters">
-            <Input v-model="search" placeholder="Cari nama atau kode" />
-            <select
-                v-model="categoryId"
-                class="h-9 rounded-md border bg-transparent px-3 text-sm"
+        <section class="rounded-2xl border bg-card p-4">
+            <form
+                class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
+                @submit.prevent="applyFilters"
             >
-                <option :value="null">Semua kategori</option>
-                <option
-                    v-for="category in categories"
-                    :key="category.id"
-                    :value="category.id"
+                <Input
+                    v-model="search"
+                    class="h-11 rounded-xl"
+                    placeholder="Cari nama atau kode"
+                />
+                <select
+                    v-model="categoryId"
+                    class="h-11 rounded-xl border bg-transparent px-3 text-sm"
                 >
-                    {{ category.name }}
-                </option>
-            </select>
-            <select
-                v-model="status"
-                class="h-9 rounded-md border bg-transparent px-3 text-sm"
-            >
-                <option value="active">Aktif</option>
-                <option value="inactive">Nonaktif</option>
-                <option value="">Semua status</option>
-            </select>
-            <Button type="submit" variant="outline">Terapkan</Button>
-        </form>
-
-        <div class="overflow-x-auto rounded-lg border">
-            <table class="w-full text-sm">
-                <thead class="bg-muted/50 text-left">
-                    <tr>
-                        <th class="p-3">Kode</th>
-                        <th class="p-3">Nama</th>
-                        <th class="p-3">Kategori</th>
-                        <th class="p-3">Lokasi</th>
-                        <th class="p-3">Tersedia</th>
-                        <th class="p-3">Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr
-                        v-for="item in items.data"
-                        :key="item.id"
-                        class="border-t"
+                    <option :value="null">Semua kategori</option>
+                    <option
+                        v-for="category in categories"
+                        :key="category.id"
+                        :value="category.id"
                     >
-                        <td class="p-3 font-mono">{{ item.code }}</td>
-                        <td class="p-3">
-                            <Link
-                                :href="`/inventory/${item.id}`"
-                                class="font-medium hover:underline"
-                            >
-                                {{ item.name }}
-                            </Link>
-                        </td>
-                        <td class="p-3">{{ item.category?.name ?? '-' }}</td>
-                        <td class="p-3">{{ item.location?.name ?? '-' }}</td>
-                        <td class="p-3">
-                            {{ item.availability.available }} /
-                            {{ item.availability.total }}
-                        </td>
-                        <td class="p-3">
-                            {{
-                                item.status === 'active' ? 'Aktif' : 'Nonaktif'
-                            }}
-                        </td>
-                    </tr>
-                    <tr v-if="items.data.length === 0">
-                        <td class="p-3 text-muted-foreground" colspan="6">
-                            Tidak ada barang yang cocok.
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+                        {{ category.name }}
+                    </option>
+                </select>
+                <select
+                    v-model="status"
+                    class="h-11 rounded-xl border bg-transparent px-3 text-sm"
+                >
+                    <option value="active">Aktif</option>
+                    <option value="inactive">Nonaktif</option>
+                    <option value="">Semua status</option>
+                </select>
+                <Button class="h-11 rounded-xl" type="submit" variant="outline">
+                    Terapkan
+                </Button>
+            </form>
+        </section>
+
+        <EmptyState
+            v-if="items.data.length === 0 && isDefaultView"
+            title="Belum ada barang di inventaris."
+            description="Barang yang ditambahkan admin akan tampil di katalog ini."
+        />
+        <EmptyState
+            v-else-if="items.data.length === 0"
+            title="Tidak ada barang yang cocok."
+            description="Ubah kata kunci atau filter, lalu coba lagi."
+        >
+            <template #actions>
+                <Button class="h-11 rounded-xl" variant="outline" as-child>
+                    <Link href="/inventory">Reset filter</Link>
+                </Button>
+            </template>
+        </EmptyState>
+
+        <div v-else class="grid gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">
+            <article
+                v-for="item in items.data"
+                :key="item.id"
+                class="flex min-w-0 flex-col gap-3 rounded-2xl border bg-card p-3 sm:gap-4 sm:p-4"
+            >
+                <div class="flex items-start justify-between gap-3">
+                    <p class="font-mono text-xs text-muted-foreground">
+                        {{ item.code }}
+                    </p>
+                    <StatusBadge
+                        :label="
+                            item.status === 'active' ? 'Tersedia' : 'Nonaktif'
+                        "
+                        :tone="item.status === 'active' ? 'success' : 'neutral'"
+                    />
+                </div>
+                <Link
+                    :href="`/inventory/${item.id}`"
+                    class="font-semibold hover:text-primary"
+                >
+                    {{ item.name }}
+                </Link>
+                <div class="grid gap-2 text-sm text-muted-foreground">
+                    <p class="flex items-center gap-2">
+                        <Tag class="size-4 shrink-0" aria-hidden="true" />
+                        {{ item.category?.name ?? '-' }}
+                    </p>
+                    <p class="flex items-center gap-2">
+                        <MapPin class="size-4 shrink-0" aria-hidden="true" />
+                        {{ item.location?.name ?? '-' }}
+                    </p>
+                </div>
+                <div
+                    class="mt-auto flex flex-wrap items-center justify-between gap-2"
+                >
+                    <p class="text-sm font-medium">
+                        Tersedia {{ item.availability.available }} dari
+                        {{ item.availability.total }}
+                    </p>
+                    <Button variant="outline" size="sm" as-child>
+                        <Link :href="`/inventory/${item.id}`"
+                            >Lihat detail</Link
+                        >
+                    </Button>
+                </div>
+            </article>
         </div>
 
         <div class="flex flex-wrap gap-1">

@@ -2,6 +2,8 @@
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import { ref } from 'vue';
 import InputError from '@/components/InputError.vue';
+import PageHeader from '@/components/PageHeader.vue';
+import TableShell from '@/components/TableShell.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -55,15 +57,13 @@ function submit(): void {
     <Head title="Lokasi" />
 
     <div class="flex flex-col gap-6 p-4">
-        <div>
-            <h1 class="text-xl font-semibold">Lokasi</h1>
-            <p class="text-sm text-muted-foreground">
-                Lokasi penyimpanan barang.
-            </p>
-        </div>
+        <PageHeader
+            title="Lokasi"
+            description="Kelola lokasi penyimpanan barang inventaris."
+        />
 
         <form
-            class="grid gap-4 rounded-lg border p-4 md:grid-cols-3"
+            class="grid gap-4 rounded-2xl border bg-card p-5 md:grid-cols-3"
             @submit.prevent="submit"
         >
             <div class="md:col-span-3">
@@ -105,45 +105,44 @@ function submit(): void {
             </div>
         </form>
 
-        <div class="overflow-x-auto rounded-lg border">
-            <table class="w-full text-sm">
-                <thead class="bg-muted/50 text-left">
-                    <tr>
-                        <th class="p-3">Kode</th>
-                        <th class="p-3">Nama</th>
-                        <th class="p-3">Keterangan</th>
-                        <th class="p-3">Barang</th>
-                        <th class="p-3"></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr
-                        v-for="location in locations.data"
-                        :key="location.id"
-                        class="border-t"
-                    >
-                        <td class="p-3 font-mono">{{ location.code }}</td>
-                        <td class="p-3">{{ location.name }}</td>
-                        <td class="p-3">{{ location.description ?? '-' }}</td>
-                        <td class="p-3">{{ location.items_count }}</td>
-                        <td class="p-3 text-right">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                @click="startEdit(location)"
-                            >
-                                Ubah
-                            </Button>
-                        </td>
-                    </tr>
-                    <tr v-if="locations.data.length === 0">
-                        <td class="p-3 text-muted-foreground" colspan="5">
-                            Belum ada lokasi.
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
+        <TableShell caption="Daftar lokasi penyimpanan">
+            <thead>
+                <tr>
+                    <th class="p-3">Kode</th>
+                    <th class="p-3">Nama</th>
+                    <th class="p-3">Keterangan</th>
+                    <th class="p-3">Barang</th>
+                    <th class="p-3"></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr
+                    v-for="location in locations.data"
+                    :key="location.id"
+                    class="border-t"
+                >
+                    <td class="p-3 font-mono">{{ location.code }}</td>
+                    <td class="p-3">{{ location.name }}</td>
+                    <td class="p-3">{{ location.description ?? '-' }}</td>
+                    <td class="p-3">{{ location.items_count }}</td>
+                    <td class="p-3 text-right">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            @click="startEdit(location)"
+                        >
+                            Ubah
+                        </Button>
+                    </td>
+                </tr>
+                <tr v-if="locations.data.length === 0">
+                    <td class="p-3 text-muted-foreground" colspan="5">
+                        Belum ada lokasi. Tambahkan lokasi melalui formulir agar
+                        dapat dipilih saat menyimpan barang.
+                    </td>
+                </tr>
+            </tbody>
+        </TableShell>
 
         <div class="flex flex-wrap gap-1">
             <template v-for="link in locations.links" :key="link.label">

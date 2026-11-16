@@ -2,6 +2,9 @@
 import { Head, router, useForm } from '@inertiajs/vue3';
 import { ref } from 'vue';
 import InputError from '@/components/InputError.vue';
+import PageHeader from '@/components/PageHeader.vue';
+import StatusBadge from '@/components/StatusBadge.vue';
+import TableShell from '@/components/TableShell.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -80,15 +83,15 @@ function formatDate(value: string | null): string {
     <Head title="Pengumuman" />
 
     <div class="flex flex-col gap-6 p-4">
-        <div>
-            <h1 class="text-xl font-semibold">Pengumuman</h1>
-            <p class="text-sm text-muted-foreground">
-                Pengumuman yang sudah dipublikasikan tampil di dashboard semua
-                pengguna.
-            </p>
-        </div>
+        <PageHeader
+            title="Pengumuman"
+            description="Pengumuman yang dipublikasikan tampil di dashboard semua pengguna."
+        />
 
-        <form class="grid gap-3 rounded-lg border p-4" @submit.prevent="submit">
+        <form
+            class="grid gap-3 rounded-2xl border bg-card p-5"
+            @submit.prevent="submit"
+        >
             <h2 class="font-medium">Pengumuman baru</h2>
             <div class="grid gap-2">
                 <Label for="title">Judul</Label>
@@ -114,7 +117,7 @@ function formatDate(value: string | null): string {
 
         <form
             v-if="editing"
-            class="grid gap-3 rounded-lg border p-4"
+            class="grid gap-3 rounded-2xl border bg-card p-5"
             @submit.prevent="update"
         >
             <h2 class="font-medium">Ubah pengumuman</h2>
@@ -143,75 +146,81 @@ function formatDate(value: string | null): string {
             </div>
         </form>
 
-        <div class="overflow-x-auto rounded-lg border">
-            <table class="w-full text-sm">
-                <thead class="bg-muted/50 text-left">
-                    <tr>
-                        <th class="p-3">Judul</th>
-                        <th class="p-3">Status</th>
-                        <th class="p-3">Dipublikasikan</th>
-                        <th class="p-3">Pembuat</th>
-                        <th class="p-3"></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr
-                        v-for="announcement in announcements.data"
-                        :key="announcement.id"
-                        class="border-t"
-                    >
-                        <td class="p-3">
-                            {{ announcement.title }}
-                            <span
-                                class="block truncate text-xs text-muted-foreground"
-                            >
-                                {{ announcement.content }}
-                            </span>
-                        </td>
-                        <td class="p-3">
-                            {{
+        <TableShell caption="Daftar pengumuman">
+            <thead>
+                <tr>
+                    <th class="p-3">Judul</th>
+                    <th class="p-3">Status</th>
+                    <th class="p-3">Dipublikasikan</th>
+                    <th class="p-3">Pembuat</th>
+                    <th class="p-3"></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr
+                    v-for="announcement in announcements.data"
+                    :key="announcement.id"
+                    class="border-t"
+                >
+                    <td class="p-3">
+                        {{ announcement.title }}
+                        <span
+                            class="block truncate text-xs text-muted-foreground"
+                        >
+                            {{ announcement.content }}
+                        </span>
+                    </td>
+                    <td class="p-3">
+                        <StatusBadge
+                            :label="
                                 announcement.status === 'published'
                                     ? 'Terbit'
                                     : 'Draft'
-                            }}
-                        </td>
-                        <td class="p-3">
-                            {{ formatDate(announcement.published_at) }}
-                        </td>
-                        <td class="p-3">
-                            {{ announcement.creator?.name ?? '-' }}
-                        </td>
-                        <td class="p-3">
-                            <div class="flex justify-end gap-2">
-                                <Button
-                                    size="sm"
-                                    variant="outline"
-                                    @click="startEdit(announcement)"
-                                >
-                                    Ubah
-                                </Button>
-                                <Button
-                                    size="sm"
-                                    variant="outline"
-                                    @click="toggleStatus(announcement)"
-                                >
-                                    {{
-                                        announcement.status === 'published'
-                                            ? 'Tarik'
-                                            : 'Terbitkan'
-                                    }}
-                                </Button>
-                            </div>
-                        </td>
-                    </tr>
-                    <tr v-if="announcements.data.length === 0">
-                        <td class="p-3 text-muted-foreground" colspan="5">
-                            Belum ada pengumuman.
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
+                            "
+                            :tone="
+                                announcement.status === 'published'
+                                    ? 'success'
+                                    : 'neutral'
+                            "
+                        />
+                    </td>
+                    <td class="p-3">
+                        {{ formatDate(announcement.published_at) }}
+                    </td>
+                    <td class="p-3">
+                        {{ announcement.creator?.name ?? '-' }}
+                    </td>
+                    <td class="p-3">
+                        <div class="flex justify-end gap-2">
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                @click="startEdit(announcement)"
+                            >
+                                Ubah
+                            </Button>
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                @click="toggleStatus(announcement)"
+                            >
+                                {{
+                                    announcement.status === 'published'
+                                        ? 'Tarik'
+                                        : 'Terbitkan'
+                                }}
+                            </Button>
+                        </div>
+                    </td>
+                </tr>
+                <tr v-if="announcements.data.length === 0">
+                    <td class="p-3 text-muted-foreground" colspan="5">
+                        Belum ada pengumuman. Isi formulir pengumuman baru untuk
+                        membuat draft.
+                    </td>
+                </tr>
+            </tbody>
+        </TableShell>
 
         <div class="flex flex-wrap gap-1">
             <template v-for="link in announcements.links" :key="link.label">

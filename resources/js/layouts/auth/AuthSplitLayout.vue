@@ -1,10 +1,6 @@
 <script setup lang="ts">
-import { Link, usePage } from '@inertiajs/vue3';
-import AppLogoIcon from '@/components/AppLogoIcon.vue';
-import { home } from '@/routes';
-
-const page = usePage();
-const name = page.props.name;
+import AppLogo from '@/components/AppLogo.vue';
+import AuthShowcase from '@/components/AuthShowcase.vue';
 
 defineProps<{
     title?: string;
@@ -13,35 +9,32 @@ defineProps<{
 </script>
 
 <template>
-    <div
-        class="relative grid h-dvh flex-col items-center justify-center px-8 sm:px-0 lg:max-w-none lg:grid-cols-2 lg:px-0"
-    >
+    <div class="min-h-dvh bg-background p-4 md:p-6 lg:p-8">
         <div
-            class="relative hidden h-full flex-col bg-muted p-10 text-white lg:flex dark:border-r"
+            class="mx-auto grid w-full max-w-6xl overflow-hidden rounded-3xl border bg-card lg:max-w-[1120px] lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]"
         >
-            <div class="absolute inset-0 bg-zinc-900" />
-            <Link
-                :href="home()"
-                class="relative z-20 flex items-center text-lg font-medium"
-            >
-                <AppLogoIcon class="mr-2 size-8 fill-current text-white" />
-                {{ name }}
-            </Link>
-        </div>
-        <div class="lg:p-8">
             <div
-                class="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]"
+                class="flex flex-col justify-center px-6 py-10 md:px-12 lg:px-16"
             >
-                <div class="flex flex-col space-y-2 text-center">
-                    <h1 class="text-xl font-medium tracking-tight" v-if="title">
-                        {{ title }}
-                    </h1>
-                    <p class="text-sm text-muted-foreground" v-if="description">
-                        {{ description }}
-                    </p>
+                <div class="mx-auto w-full max-w-sm">
+                    <div class="mb-8 flex items-center gap-3">
+                        <AppLogo />
+                    </div>
+                    <div class="mb-8 space-y-2">
+                        <h1 v-if="title" class="text-2xl font-bold">
+                            {{ title }}
+                        </h1>
+                        <p
+                            v-if="description"
+                            class="text-sm text-muted-foreground"
+                        >
+                            {{ description }}
+                        </p>
+                    </div>
+                    <slot />
                 </div>
-                <slot />
             </div>
+            <AuthShowcase class="hidden lg:block" />
         </div>
     </div>
 </template>

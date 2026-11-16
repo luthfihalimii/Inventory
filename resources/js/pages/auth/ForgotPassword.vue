@@ -36,9 +36,10 @@ defineProps<{
         class="flex flex-col gap-6"
     >
         <div class="grid gap-2">
-            <Label for="email">Email</Label>
+            <Label for="email" class="text-[13px] font-medium">Email</Label>
             <Input
                 id="email"
+                class="h-11 rounded-xl"
                 type="email"
                 name="email"
                 required
@@ -49,7 +50,11 @@ defineProps<{
             <InputError :message="errors.email" />
         </div>
 
-        <Button type="submit" class="w-full" :disabled="processing">
+        <Button
+            type="submit"
+            class="h-11 w-full rounded-xl"
+            :disabled="processing"
+        >
             <Spinner v-if="processing" />
             Kirim tautan reset
         </Button>

@@ -1,7 +1,11 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
+import EmptyState from '@/components/EmptyState.vue';
+import PageHeader from '@/components/PageHeader.vue';
+import StatusBadge from '@/components/StatusBadge.vue';
+import TableShell from '@/components/TableShell.vue';
 import { Button } from '@/components/ui/button';
-import type { Paginated } from '@/types';
+import type { Paginated, StatusTone } from '@/types';
 
 type BorrowRequest = {
     id: number;
@@ -34,6 +38,18 @@ const categoryLabel: Record<string, string> = {
     urgent: 'Mendadak',
 };
 
+const statusTone: Record<string, StatusTone> = {
+    pending_approval: 'warning',
+    approved: 'success',
+    rejected: 'danger',
+    cancelled: 'neutral',
+};
+
+const categoryTone: Record<string, StatusTone> = {
+    scheduled: 'info',
+    urgent: 'warning',
+};
+
 function formatDate(value: string): string {
     return new Date(value).toLocaleString('id-ID', {
         dateStyle: 'medium',
@@ -45,66 +61,75 @@ function formatDate(value: string): string {
 <template>
     <Head title="Peminjaman Saya" />
 
-    <div class="flex flex-col gap-6 p-4">
-        <div class="flex flex-wrap items-start justify-between gap-4">
-            <div>
-                <h1 class="text-xl font-semibold">Peminjaman Saya</h1>
-                <p class="text-sm text-muted-foreground">
-                    Riwayat dan status pengajuan peminjaman.
-                </p>
-            </div>
-            <Button as-child>
-                <Link href="/peminjaman/baru">Ajukan peminjaman</Link>
-            </Button>
-        </div>
+    <div class="flex min-w-0 flex-col gap-6 p-4">
+        <PageHeader
+            title="Peminjaman Saya"
+            description="Riwayat dan status pengajuan peminjaman."
+        >
+            <template #actions>
+                <Button class="h-11 rounded-xl" as-child>
+                    <Link href="/peminjaman/baru">Ajukan peminjaman</Link>
+                </Button>
+            </template>
+        </PageHeader>
 
-        <div class="overflow-x-auto rounded-lg border">
-            <table class="w-full text-sm">
-                <thead class="bg-muted/50 text-left">
-                    <tr>
-                        <th class="p-3">Referensi</th>
-                        <th class="p-3">Kategori</th>
-                        <th class="p-3">Mulai</th>
-                        <th class="p-3">Kembali</th>
-                        <th class="p-3">Barang</th>
-                        <th class="p-3">Status</th>
-                        <th class="p-3"></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr
-                        v-for="item in requests.data"
-                        :key="item.id"
-                        class="border-t"
-                    >
-                        <td class="p-3 font-mono">
-                            {{ item.reference_no ?? `#${item.id}` }}
-                        </td>
-                        <td class="p-3">
-                            {{ categoryLabel[item.category] ?? item.category }}
-                        </td>
-                        <td class="p-3">{{ formatDate(item.pickup_at) }}</td>
-                        <td class="p-3">{{ formatDate(item.return_at) }}</td>
-                        <td class="p-3">{{ item.items_count }}</td>
-                        <td class="p-3">
-                            {{ statusLabel[item.status] ?? item.status }}
-                        </td>
-                        <td class="p-3 text-right">
-                            <Button variant="outline" size="sm" as-child>
-                                <Link :href="`/peminjaman/${item.id}`"
-                                    >Detail</Link
-                                >
-                            </Button>
-                        </td>
-                    </tr>
-                    <tr v-if="requests.data.length === 0">
-                        <td class="p-3 text-muted-foreground" colspan="7">
-                            Belum ada pengajuan.
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
+        <EmptyState
+            v-if="requests.data.length === 0"
+            title="Belum ada pengajuan."
+        >
+            <template #actions>
+                <Button class="h-11 rounded-xl" as-child>
+                    <Link href="/peminjaman/baru">Ajukan peminjaman</Link>
+                </Button>
+            </template>
+        </EmptyState>
+
+        <TableShell v-else caption="Daftar pengajuan peminjaman">
+            <thead>
+                <tr>
+                    <th>Referensi</th>
+                    <th class="hidden md:table-cell">Kategori</th>
+                    <th class="hidden lg:table-cell">Mulai</th>
+                    <th class="hidden md:table-cell">Kembali</th>
+                    <th class="hidden md:table-cell">Barang</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr v-for="item in requests.data" :key="item.id">
+                    <td class="font-mono">
+                        {{ item.reference_no ?? `#${item.id}` }}
+                    </td>
+                    <td class="hidden md:table-cell">
+                        <StatusBadge
+                            :label="
+                                categoryLabel[item.category] ?? item.category
+                            "
+                            :tone="categoryTone[item.category] ?? 'neutral'"
+                        />
+                    </td>
+                    <td class="hidden whitespace-nowrap lg:table-cell">
+                        {{ formatDate(item.pickup_at) }}
+                    </td>
+                    <td class="hidden whitespace-nowrap md:table-cell">
+                        {{ formatDate(item.return_at) }}
+                    </td>
+                    <td class="hidden md:table-cell">{{ item.items_count }}</td>
+                    <td>
+                        <StatusBadge
+                            :label="statusLabel[item.status] ?? item.status"
+                            :tone="statusTone[item.status] ?? 'neutral'"
+                        />
+                    </td>
+                    <td class="text-right">
+                        <Button variant="outline" size="sm" as-child>
+                            <Link :href="`/peminjaman/${item.id}`">Detail</Link>
+                        </Button>
+                    </td>
+                </tr>
+            </tbody>
+        </TableShell>
 
         <div class="flex flex-wrap gap-1">
             <template v-for="link in requests.links" :key="link.label">

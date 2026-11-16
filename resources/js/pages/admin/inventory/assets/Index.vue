@@ -2,10 +2,31 @@
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { ref } from 'vue';
 import InputError from '@/components/InputError.vue';
+import PageHeader from '@/components/PageHeader.vue';
+import StatusBadge from '@/components/StatusBadge.vue';
+import TableShell from '@/components/TableShell.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import type { Paginated } from '@/types';
+import type { Paginated, StatusTone } from '@/types';
+
+const assetStatusLabel: Record<string, string> = {
+    available: 'Tersedia',
+    borrowed: 'Dipinjam',
+    damaged: 'Rusak',
+    maintenance: 'Perawatan',
+    lost: 'Hilang',
+    inactive: 'Nonaktif',
+};
+
+const assetStatusTone: Record<string, StatusTone> = {
+    available: 'success',
+    borrowed: 'info',
+    damaged: 'danger',
+    maintenance: 'warning',
+    lost: 'danger',
+    inactive: 'neutral',
+};
 
 type Asset = {
     id: number;
@@ -84,29 +105,39 @@ function submit(): void {
     <Head title="Unit aset" />
 
     <div class="flex flex-col gap-6 p-4">
-        <div>
-            <h1 class="text-xl font-semibold">Unit aset</h1>
-            <p class="text-sm text-muted-foreground">
-                Unit fisik untuk barang yang dilacak per unit.
-            </p>
-        </div>
+        <PageHeader
+            title="Unit aset"
+            description="Kelola unit fisik untuk barang yang dilacak per unit."
+        />
 
-        <form class="grid gap-2 md:grid-cols-3" @submit.prevent="applyFilters">
-            <Input v-model="search" placeholder="Cari kode aset atau serial" />
-            <select
-                v-model="itemId"
-                class="h-9 rounded-md border bg-transparent px-3 text-sm"
+        <section class="rounded-2xl border bg-card p-4">
+            <form
+                class="grid gap-3 md:grid-cols-3"
+                @submit.prevent="applyFilters"
             >
-                <option :value="null">Semua barang</option>
-                <option v-for="item in items" :key="item.id" :value="item.id">
-                    {{ item.name }} ({{ item.code }})
-                </option>
-            </select>
-            <Button type="submit" variant="outline">Terapkan</Button>
-        </form>
+                <Input
+                    v-model="search"
+                    placeholder="Cari kode aset atau serial"
+                />
+                <select
+                    v-model="itemId"
+                    class="h-11 rounded-xl border bg-transparent px-3 text-sm"
+                >
+                    <option :value="null">Semua barang</option>
+                    <option
+                        v-for="item in items"
+                        :key="item.id"
+                        :value="item.id"
+                    >
+                        {{ item.name }} ({{ item.code }})
+                    </option>
+                </select>
+                <Button type="submit" variant="outline">Terapkan</Button>
+            </form>
+        </section>
 
         <form
-            class="grid gap-4 rounded-lg border p-4 md:grid-cols-3"
+            class="grid gap-4 rounded-2xl border bg-card p-5 md:grid-cols-3"
             @submit.prevent="submit"
         >
             <div class="md:col-span-3">
@@ -120,7 +151,7 @@ function submit(): void {
                 <select
                     id="item_id"
                     v-model="form.item_id"
-                    class="h-9 rounded-md border bg-transparent px-3 text-sm"
+                    class="h-11 rounded-xl border bg-transparent px-3 text-sm"
                     required
                 >
                     <option :value="null" disabled>Pilih barang</option>
@@ -152,7 +183,7 @@ function submit(): void {
                 <select
                     id="condition"
                     v-model="form.condition"
-                    class="h-9 rounded-md border bg-transparent px-3 text-sm"
+                    class="h-11 rounded-xl border bg-transparent px-3 text-sm"
                 >
                     <option value="good">Baik</option>
                     <option value="damaged">Rusak</option>
@@ -165,7 +196,7 @@ function submit(): void {
                 <select
                     id="status"
                     v-model="form.status"
-                    class="h-9 rounded-md border bg-transparent px-3 text-sm"
+                    class="h-11 rounded-xl border bg-transparent px-3 text-sm"
                 >
                     <option value="available">Tersedia</option>
                     <option value="borrowed">Dipinjam</option>
@@ -198,49 +229,64 @@ function submit(): void {
             </div>
         </form>
 
-        <div class="overflow-x-auto rounded-lg border">
-            <table class="w-full text-sm">
-                <thead class="bg-muted/50 text-left">
-                    <tr>
-                        <th class="p-3">Kode aset</th>
-                        <th class="p-3">Barang</th>
-                        <th class="p-3">Serial</th>
-                        <th class="p-3">Kondisi</th>
-                        <th class="p-3">Status</th>
-                        <th class="p-3"></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr
-                        v-for="asset in assets.data"
-                        :key="asset.id"
-                        class="border-t"
-                    >
-                        <td class="p-3 font-mono">{{ asset.asset_code }}</td>
-                        <td class="p-3">{{ asset.item?.name ?? '-' }}</td>
-                        <td class="p-3">{{ asset.serial_number ?? '-' }}</td>
-                        <td class="p-3">
-                            {{ asset.condition === 'good' ? 'Baik' : 'Rusak' }}
-                        </td>
-                        <td class="p-3">{{ asset.status }}</td>
-                        <td class="p-3 text-right">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                @click="startEdit(asset)"
-                            >
-                                Ubah
-                            </Button>
-                        </td>
-                    </tr>
-                    <tr v-if="assets.data.length === 0">
-                        <td class="p-3 text-muted-foreground" colspan="6">
-                            Belum ada unit.
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
+        <TableShell caption="Daftar unit aset">
+            <thead>
+                <tr>
+                    <th class="p-3">Kode aset</th>
+                    <th class="p-3">Barang</th>
+                    <th class="p-3">Serial</th>
+                    <th class="p-3">Kondisi</th>
+                    <th class="p-3">Status</th>
+                    <th class="p-3"></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr
+                    v-for="asset in assets.data"
+                    :key="asset.id"
+                    class="border-t"
+                >
+                    <td class="p-3 font-mono">{{ asset.asset_code }}</td>
+                    <td class="p-3">{{ asset.item?.name ?? '-' }}</td>
+                    <td class="p-3">{{ asset.serial_number ?? '-' }}</td>
+                    <td class="p-3">
+                        <StatusBadge
+                            :label="
+                                asset.condition === 'good' ? 'Baik' : 'Rusak'
+                            "
+                            :tone="
+                                asset.condition === 'good'
+                                    ? 'success'
+                                    : 'danger'
+                            "
+                        />
+                    </td>
+                    <td class="p-3">
+                        <StatusBadge
+                            :label="
+                                assetStatusLabel[asset.status] ?? asset.status
+                            "
+                            :tone="assetStatusTone[asset.status] ?? 'neutral'"
+                        />
+                    </td>
+                    <td class="p-3 text-right">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            @click="startEdit(asset)"
+                        >
+                            Ubah
+                        </Button>
+                    </td>
+                </tr>
+                <tr v-if="assets.data.length === 0">
+                    <td class="p-3 text-muted-foreground" colspan="6">
+                        Tidak ada unit yang cocok. Ubah filter atau tambahkan
+                        unit melalui formulir.
+                    </td>
+                </tr>
+            </tbody>
+        </TableShell>
 
         <div class="flex flex-wrap gap-1">
             <template v-for="link in assets.links" :key="link.label">

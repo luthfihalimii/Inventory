@@ -33,7 +33,68 @@ class DashboardController extends Controller
                 ->orderByDesc('published_at')
                 ->limit(5)
                 ->get(['id', 'title', 'content', 'published_at']),
+            ...$this->dashboardAnalytics($roles, $user->member_id),
         ]);
+    }
+
+    /**
+     * @param  list<string>  $roles
+     * @return array{scope: 'personal'|'all', trend: list<array{label: string, value: int}>, statusBreakdown: list<array{status: string, value: int}>}
+     */
+    private function dashboardAnalytics(array $roles, ?int $memberId): array
+    {
+        $isAdmin = in_array('admin_korlab', $roles, true) || in_array('wm', $roles, true);
+        $scope = $isAdmin ? 'all' : 'personal';
+        $scopedMemberId = $isAdmin ? null : $memberId;
+        $start = now()->startOfMonth()->subMonths(5);
+
+        if ($scope === 'personal' && $scopedMemberId === null) {
+            $trend = [];
+
+            for ($month = 0; $month < 6; $month++) {
+                $trend[] = [
+                    'label' => $start->copy()->addMonths($month)->locale('id')->isoFormat('MMM'),
+                    'value' => 0,
+                ];
+            }
+
+            return ['scope' => $scope, 'trend' => $trend, 'statusBreakdown' => []];
+        }
+
+        $counts = BorrowRequest::query()
+            ->when($scopedMemberId, fn ($query) => $query->where('member_id', $scopedMemberId))
+            ->where('created_at', '>=', $start)
+            ->selectRaw("to_char(date_trunc('month', created_at), 'YYYY-MM') as month, count(*) as total")
+            ->groupBy('month')
+            ->pluck('total', 'month');
+
+        $trend = [];
+
+        for ($month = 0; $month < 6; $month++) {
+            $cursor = $start->copy()->addMonths($month);
+            $trend[] = [
+                'label' => $cursor->locale('id')->isoFormat('MMM'),
+                'value' => (int) ($counts[$cursor->format('Y-m')] ?? 0),
+            ];
+        }
+
+        $statusCounts = BorrowRequest::query()
+            ->when($scopedMemberId, fn ($query) => $query->where('member_id', $scopedMemberId))
+            ->selectRaw('status, count(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status');
+
+        $statusBreakdown = [];
+
+        foreach (['pending_approval', 'approved', 'rejected', 'cancelled'] as $status) {
+            $value = (int) ($statusCounts[$status] ?? 0);
+
+            if ($value > 0) {
+                $statusBreakdown[] = ['status' => $status, 'value' => $value];
+            }
+        }
+
+        return ['scope' => $scope, 'trend' => $trend, 'statusBreakdown' => $statusBreakdown];
     }
 
     /**

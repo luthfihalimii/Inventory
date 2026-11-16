@@ -1,14 +1,12 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
 import {
-    BookOpen,
     Boxes,
     Building2,
     CalendarClock,
     ClipboardCheck,
     ClipboardList,
     Download,
-    FolderGit2,
     LayoutGrid,
     MapPin,
     Megaphone,
@@ -24,7 +22,6 @@ import {
 } from '@lucide/vue';
 import { computed } from 'vue';
 import AppLogo from '@/components/AppLogo.vue';
-import NavFooter from '@/components/NavFooter.vue';
 import NavMain from '@/components/NavMain.vue';
 import NavUser from '@/components/NavUser.vue';
 import {
@@ -45,8 +42,10 @@ const roles = computed(
 );
 const isWm = computed(() => roles.value.includes('wm'));
 const isAdmin = computed(() => roles.value.includes('admin_korlab'));
+const isMember = computed(() => roles.value.includes('user'));
+const isStaff = computed(() => isAdmin.value || isWm.value);
 
-const mainNavItems: NavItem[] = [
+const mainNavItems = computed<NavItem[]>(() => [
     {
         title: 'Dashboard',
         href: dashboard(),
@@ -57,12 +56,16 @@ const mainNavItems: NavItem[] = [
         href: '/inventory',
         icon: Package,
     },
-    {
-        title: 'Peminjaman Saya',
-        href: '/peminjaman',
-        icon: ClipboardList,
-    },
-];
+    ...(isMember.value
+        ? [
+              {
+                  title: 'Peminjaman Saya',
+                  href: '/peminjaman',
+                  icon: ClipboardList,
+              },
+          ]
+        : []),
+]);
 
 const approvalNavItems: NavItem[] = [
     { title: 'Approval', href: '/admin/approval', icon: ClipboardCheck },
@@ -99,19 +102,6 @@ const wmNavItems: NavItem[] = [
     { title: 'Akun', href: '/wm/accounts', icon: UsersRound },
     { title: 'Audit', href: '/wm/audit', icon: ScrollText },
 ];
-
-const footerNavItems: NavItem[] = [
-    {
-        title: 'Repository',
-        href: 'https://github.com/laravel/vue-starter-kit',
-        icon: FolderGit2,
-    },
-    {
-        title: 'Documentation',
-        href: 'https://laravel.com/docs/starter-kits#vue',
-        icon: BookOpen,
-    },
-];
 </script>
 
 <template>
@@ -131,21 +121,16 @@ const footerNavItems: NavItem[] = [
         <SidebarContent>
             <NavMain :items="mainNavItems" />
             <NavMain
-                v-if="isAdmin || isWm"
+                v-if="isStaff"
                 :items="approvalNavItems"
                 label="Persetujuan"
             />
-            <NavMain
-                v-if="isAdmin || isWm"
-                :items="reportNavItems"
-                label="Laporan"
-            />
-            <NavMain v-if="isAdmin" :items="adminNavItems" label="Inventaris" />
+            <NavMain v-if="isStaff" :items="reportNavItems" label="Laporan" />
+            <NavMain v-if="isStaff" :items="adminNavItems" label="Inventaris" />
             <NavMain v-if="isWm" :items="wmNavItems" label="Manajemen" />
         </SidebarContent>
 
         <SidebarFooter>
-            <NavFooter :items="footerNavItems" />
             <NavUser />
         </SidebarFooter>
     </Sidebar>

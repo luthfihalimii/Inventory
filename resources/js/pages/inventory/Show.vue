@@ -2,6 +2,7 @@
 import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 import InputError from '@/components/InputError.vue';
+import PageHeader from '@/components/PageHeader.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -194,19 +195,19 @@ function formatDate(value: string | null): string {
 <template>
     <Head :title="item.name" />
 
-    <div class="flex flex-col gap-6 p-4">
-        <div class="flex flex-wrap items-start justify-between gap-4">
-            <div>
-                <h1 class="text-xl font-semibold">{{ item.name }}</h1>
-                <p class="text-sm text-muted-foreground">
-                    {{ item.code }} · {{ item.category?.name ?? '-' }} ·
-                    {{ item.location?.name ?? '-' }}
-                </p>
-            </div>
-            <Button variant="outline" as-child>
-                <Link href="/inventory">Kembali</Link>
-            </Button>
-        </div>
+    <div
+        class="flex min-w-0 flex-col gap-6 p-4 [&_button]:h-11 [&_button]:rounded-xl"
+    >
+        <PageHeader
+            :title="item.name"
+            :description="`${item.code} · ${item.category?.name ?? '-'}`"
+        >
+            <template #actions>
+                <Button variant="outline" as-child>
+                    <Link href="/inventory">Kembali</Link>
+                </Button>
+            </template>
+        </PageHeader>
 
         <div
             v-if="
@@ -230,7 +231,7 @@ function formatDate(value: string | null): string {
 
         <div
             v-if="canBorrow"
-            class="flex flex-wrap items-end gap-3 rounded-lg border p-4"
+            class="flex flex-wrap items-end gap-3 rounded-2xl border bg-card p-4 md:p-5"
         >
             <div class="grid gap-2">
                 <Label for="borrow_quantity">Jumlah pinjam</Label>
@@ -238,7 +239,7 @@ function formatDate(value: string | null): string {
                     id="borrow_quantity"
                     v-model.number="quantity"
                     type="number"
-                    class="w-28"
+                    class="h-11 w-28 rounded-xl"
                     min="1"
                     :max="availability.available"
                 />
@@ -261,23 +262,23 @@ function formatDate(value: string | null): string {
         </div>
 
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div class="rounded-lg border p-4">
+            <div class="rounded-2xl border bg-card p-4">
                 <p class="text-xs text-muted-foreground">Total</p>
                 <p class="text-2xl font-semibold">{{ availability.total }}</p>
             </div>
-            <div class="rounded-lg border p-4">
+            <div class="rounded-2xl border bg-card p-4">
                 <p class="text-xs text-muted-foreground">Tersedia</p>
                 <p class="text-2xl font-semibold">
                     {{ availability.available }}
                 </p>
             </div>
-            <div class="rounded-lg border p-4">
+            <div class="rounded-2xl border bg-card p-4">
                 <p class="text-xs text-muted-foreground">Dipinjam</p>
                 <p class="text-2xl font-semibold">
                     {{ availability.borrowed }}
                 </p>
             </div>
-            <div class="rounded-lg border p-4">
+            <div class="rounded-2xl border bg-card p-4">
                 <p class="text-xs text-muted-foreground">Rusak / hilang</p>
                 <p class="text-2xl font-semibold">
                     {{ availability.damaged + availability.lost }}
@@ -285,9 +286,9 @@ function formatDate(value: string | null): string {
             </div>
         </div>
 
-        <div class="rounded-lg border p-4">
+        <section class="min-w-0 rounded-2xl border bg-card p-4 md:p-5">
             <div class="flex flex-wrap items-center justify-between gap-2">
-                <h2 class="font-medium">Kalender ketersediaan (90 hari)</h2>
+                <h2 class="font-semibold">Kalender ketersediaan (90 hari)</h2>
                 <div class="flex flex-wrap gap-3 text-xs text-muted-foreground">
                     <span class="flex items-center gap-1">
                         <span
@@ -310,57 +311,62 @@ function formatDate(value: string | null): string {
                 </div>
             </div>
 
-            <div class="mt-4 grid gap-6 md:grid-cols-3">
-                <div v-for="month in months" :key="month.label">
-                    <p class="mb-2 text-sm font-medium">{{ month.label }}</p>
-                    <div
-                        class="grid grid-cols-7 gap-1 text-center text-xs"
-                        role="group"
-                        :aria-label="month.label"
-                    >
-                        <span
-                            v-for="label in [
-                                'Sen',
-                                'Sel',
-                                'Rab',
-                                'Kam',
-                                'Jum',
-                                'Sab',
-                                'Min',
-                            ]"
-                            :key="label"
-                            class="py-1 text-muted-foreground"
+            <div class="mt-4 overflow-x-auto">
+                <div class="grid min-w-[640px] gap-6 md:grid-cols-3">
+                    <div v-for="month in months" :key="month.label">
+                        <p class="mb-2 text-sm font-medium">
+                            {{ month.label }}
+                        </p>
+                        <div
+                            class="grid grid-cols-7 gap-1 text-center text-xs"
+                            role="group"
+                            :aria-label="month.label"
                         >
-                            {{ label }}
-                        </span>
-                        <span
-                            v-for="blank in month.offset"
-                            :key="`blank-${blank}`"
-                        ></span>
-                        <span
-                            v-for="day in month.days"
-                            :key="day.day"
-                            class="rounded py-1"
-                            :class="{
-                                'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300':
-                                    day.level === 'free',
-                                'bg-amber-500/20 text-amber-800 dark:text-amber-300':
-                                    day.level === 'partial',
-                                'bg-red-500/20 text-red-800 dark:text-red-300':
-                                    day.level === 'full',
-                            }"
-                            :title="`${day.busy} unit terpakai`"
-                            :aria-label="`${day.day} ${month.label}: ${day.busy} unit terpakai`"
-                        >
-                            {{ day.day }}
-                        </span>
+                            <span
+                                v-for="label in [
+                                    'Sen',
+                                    'Sel',
+                                    'Rab',
+                                    'Kam',
+                                    'Jum',
+                                    'Sab',
+                                    'Min',
+                                ]"
+                                :key="label"
+                                class="py-1 text-muted-foreground"
+                            >
+                                {{ label }}
+                            </span>
+                            <span
+                                v-for="blank in month.offset"
+                                :key="`blank-${blank}`"
+                            ></span>
+                            <span
+                                v-for="day in month.days"
+                                :key="day.day"
+                                class="rounded py-1"
+                                :class="{
+                                    'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300':
+                                        day.level === 'free',
+                                    'bg-amber-500/20 text-amber-800 dark:text-amber-300':
+                                        day.level === 'partial',
+                                    'bg-red-500/20 text-red-800 dark:text-red-300':
+                                        day.level === 'full',
+                                }"
+                                :title="`${day.busy} unit terpakai`"
+                                :aria-label="`${day.day} ${month.label}: ${day.busy} unit terpakai`"
+                            >
+                                {{ day.day }}
+                            </span>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
+        </section>
 
-        <div class="rounded-lg border p-4">
-            <dl class="grid gap-2 text-sm sm:grid-cols-3">
+        <section class="rounded-2xl border bg-card p-4 md:p-5">
+            <h2 class="mb-4 font-semibold">Detail barang</h2>
+            <dl class="grid gap-3 text-sm sm:grid-cols-3">
                 <div>
                     <dt class="text-muted-foreground">Metode</dt>
                     <dd>
@@ -384,11 +390,11 @@ function formatDate(value: string | null): string {
                     <dd>{{ item.notes || '-' }}</dd>
                 </div>
             </dl>
-        </div>
+        </section>
 
         <div
             v-if="item.tracking_method === 'serialized'"
-            class="rounded-lg border"
+            class="overflow-hidden rounded-2xl border bg-card"
         >
             <table class="w-full text-sm">
                 <thead class="bg-muted/50 text-left">
@@ -423,8 +429,8 @@ function formatDate(value: string | null): string {
             </table>
         </div>
 
-        <div v-if="canManage" class="rounded-lg border">
-            <div class="border-b p-4">
+        <div v-if="canManage" class="rounded-2xl border bg-card p-4 md:p-5">
+            <div>
                 <h2 class="font-medium">Riwayat maintenance &amp; biaya</h2>
                 <p class="text-sm text-muted-foreground">
                     20 laporan terakhir untuk barang ini.
@@ -494,7 +500,7 @@ function formatDate(value: string | null): string {
 
         <form
             v-if="canManage"
-            class="grid gap-4 rounded-lg border p-4 md:grid-cols-2"
+            class="grid gap-4 rounded-2xl border bg-card p-4 md:grid-cols-2 md:p-5 [&_input]:h-11 [&_input]:rounded-xl [&_select]:h-11 [&_select]:rounded-xl [&_textarea]:rounded-xl"
             @submit.prevent="report"
         >
             <div class="md:col-span-2">

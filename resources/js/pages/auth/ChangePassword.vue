@@ -39,9 +39,12 @@ defineOptions({
         class="flex flex-col gap-6"
     >
         <div class="grid gap-2">
-            <Label for="current_password">Password saat ini</Label>
+            <Label for="current_password" class="text-[13px] font-medium"
+                >Password saat ini</Label
+            >
             <PasswordInput
                 id="current_password"
+                class="h-11 rounded-xl"
                 name="current_password"
                 required
                 autocomplete="current-password"
@@ -50,9 +53,12 @@ defineOptions({
         </div>
 
         <div class="grid gap-2">
-            <Label for="password">Password baru</Label>
+            <Label for="password" class="text-[13px] font-medium"
+                >Password baru</Label
+            >
             <PasswordInput
                 id="password"
+                class="h-11 rounded-xl"
                 name="password"
                 required
                 autocomplete="new-password"
@@ -61,16 +67,23 @@ defineOptions({
         </div>
 
         <div class="grid gap-2">
-            <Label for="password_confirmation">Ulangi password baru</Label>
+            <Label for="password_confirmation" class="text-[13px] font-medium"
+                >Ulangi password baru</Label
+            >
             <PasswordInput
                 id="password_confirmation"
+                class="h-11 rounded-xl"
                 name="password_confirmation"
                 required
                 autocomplete="new-password"
             />
         </div>
 
-        <Button type="submit" class="w-full" :disabled="processing">
+        <Button
+            type="submit"
+            class="h-11 w-full rounded-xl"
+            :disabled="processing"
+        >
             Simpan password
         </Button>
 

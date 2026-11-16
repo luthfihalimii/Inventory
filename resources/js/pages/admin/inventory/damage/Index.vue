@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { Head, Link, router } from '@inertiajs/vue3';
 import { ref } from 'vue';
+import PageHeader from '@/components/PageHeader.vue';
+import StatusBadge from '@/components/StatusBadge.vue';
+import TableShell from '@/components/TableShell.vue';
 import { Button } from '@/components/ui/button';
 import type { Paginated } from '@/types';
 
@@ -96,105 +99,102 @@ const typeLabel: Record<string, string> = {
     <Head title="Kerusakan" />
 
     <div class="flex flex-col gap-6 p-4">
-        <div>
-            <h1 class="text-xl font-semibold">Kerusakan &amp; kehilangan</h1>
-            <p class="text-sm text-muted-foreground">
-                Barang bermasalah tidak dihitung tersedia sampai diselesaikan.
-            </p>
-        </div>
+        <PageHeader
+            title="Kerusakan &amp; kehilangan"
+            description="Barang bermasalah tidak dihitung tersedia sampai laporan diselesaikan."
+        />
 
-        <form class="flex gap-2" @submit.prevent="applyFilter">
-            <select
-                v-model="status"
-                class="h-9 rounded-md border bg-transparent px-3 text-sm"
-            >
-                <option value="">Semua</option>
-                <option value="open">Terbuka</option>
-                <option value="resolved">Selesai</option>
-            </select>
-            <Button type="submit" variant="outline">Terapkan</Button>
-        </form>
+        <section class="rounded-2xl border bg-card p-4">
+            <form class="flex flex-wrap gap-3" @submit.prevent="applyFilter">
+                <select
+                    v-model="status"
+                    class="h-11 rounded-xl border bg-transparent px-3 text-sm"
+                >
+                    <option value="">Semua</option>
+                    <option value="open">Terbuka</option>
+                    <option value="resolved">Selesai</option>
+                </select>
+                <Button type="submit" variant="outline">Terapkan</Button>
+            </form>
+        </section>
 
-        <div class="overflow-x-auto rounded-lg border">
-            <table class="w-full text-sm">
-                <thead class="bg-muted/50 text-left">
-                    <tr>
-                        <th class="p-3">Waktu</th>
-                        <th class="p-3">Barang</th>
-                        <th class="p-3">Jenis</th>
-                        <th class="p-3">Jumlah</th>
-                        <th class="p-3">Keterangan</th>
-                        <th class="p-3">Status</th>
-                        <th class="p-3">Biaya</th>
-                        <th class="p-3">Vendor / petugas</th>
-                        <th class="p-3"></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr
-                        v-for="report in reports.data"
-                        :key="report.id"
-                        class="border-t align-top"
-                    >
-                        <td class="p-3 whitespace-nowrap">
-                            {{ report.reported_at }}
-                        </td>
-                        <td class="p-3">
-                            {{ report.item?.name }}
-                            <span class="block text-xs text-muted-foreground">
-                                {{
-                                    report.asset?.asset_code ??
-                                    report.item?.code
-                                }}
-                            </span>
-                        </td>
-                        <td class="p-3">
-                            {{ typeLabel[report.type] ?? report.type }}
-                        </td>
-                        <td class="p-3">{{ report.quantity ?? '-' }}</td>
-                        <td class="p-3">{{ report.description }}</td>
-                        <td class="p-3">
-                            <span v-if="report.status === 'open'">Terbuka</span>
-                            <span v-else>
-                                Selesai ·
-                                {{
-                                    report.resolution === 'repaired'
-                                        ? 'Diperbaiki'
-                                        : 'Dihapuskan'
-                                }}
-                            </span>
-                        </td>
-                        <td class="p-3">
-                            {{ report.cost ? `Rp ${report.cost}` : '-' }}
-                        </td>
-                        <td class="p-3">{{ report.vendor || '-' }}</td>
-                        <td class="flex flex-wrap gap-2 p-3">
-                            <template v-if="report.status === 'open'">
-                                <Button
-                                    size="sm"
-                                    variant="outline"
-                                    @click="resolve(report, 'repaired')"
-                                >
-                                    Diperbaiki
-                                </Button>
-                                <Button
-                                    size="sm"
-                                    variant="destructive"
-                                    @click="resolve(report, 'written_off')"
-                                >
-                                    Dihapuskan
-                                </Button>
-                            </template>
-                        </td>
-                    </tr>
-                    <tr v-if="reports.data.length === 0">
-                        <td class="p-3 text-muted-foreground" colspan="9">
-                            Belum ada laporan.
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
+        <TableShell caption="Daftar laporan kerusakan dan kehilangan">
+            <thead>
+                <tr>
+                    <th class="p-3">Waktu</th>
+                    <th class="p-3">Barang</th>
+                    <th class="p-3">Jenis</th>
+                    <th class="p-3">Jumlah</th>
+                    <th class="p-3">Keterangan</th>
+                    <th class="p-3">Status</th>
+                    <th class="p-3">Biaya</th>
+                    <th class="p-3">Vendor / petugas</th>
+                    <th class="p-3"></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr
+                    v-for="report in reports.data"
+                    :key="report.id"
+                    class="border-t align-top"
+                >
+                    <td class="p-3 whitespace-nowrap">
+                        {{ report.reported_at }}
+                    </td>
+                    <td class="p-3">
+                        {{ report.item?.name }}
+                        <span class="block text-xs text-muted-foreground">
+                            {{ report.asset?.asset_code ?? report.item?.code }}
+                        </span>
+                    </td>
+                    <td class="p-3">
+                        {{ typeLabel[report.type] ?? report.type }}
+                    </td>
+                    <td class="p-3">{{ report.quantity ?? '-' }}</td>
+                    <td class="p-3">{{ report.description }}</td>
+                    <td class="p-3">
+                        <StatusBadge
+                            :label="
+                                report.status === 'open'
+                                    ? 'Terbuka'
+                                    : `Selesai · ${report.resolution === 'repaired' ? 'Diperbaiki' : 'Dihapuskan'}`
+                            "
+                            :tone="
+                                report.status === 'open' ? 'warning' : 'success'
+                            "
+                        />
+                    </td>
+                    <td class="p-3">
+                        {{ report.cost ? `Rp ${report.cost}` : '-' }}
+                    </td>
+                    <td class="p-3">{{ report.vendor || '-' }}</td>
+                    <td class="flex flex-wrap gap-2 p-3">
+                        <template v-if="report.status === 'open'">
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                @click="resolve(report, 'repaired')"
+                            >
+                                Diperbaiki
+                            </Button>
+                            <Button
+                                size="sm"
+                                variant="destructive"
+                                @click="resolve(report, 'written_off')"
+                            >
+                                Dihapuskan
+                            </Button>
+                        </template>
+                    </td>
+                </tr>
+                <tr v-if="reports.data.length === 0">
+                    <td class="p-3 text-muted-foreground" colspan="9">
+                        Tidak ada laporan pada filter ini. Pilih Semua untuk
+                        memeriksa laporan lain.
+                    </td>
+                </tr>
+            </tbody>
+        </TableShell>
 
         <div class="flex flex-wrap gap-1">
             <template v-for="link in reports.links" :key="link.label">
