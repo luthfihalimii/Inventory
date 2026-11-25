@@ -1,0 +1,2 @@
+@if(session('success'))<div class="alert" role="status"><i class="fa-solid fa-circle-check"></i> {{ session('success') }}</div>@endif
+@if(session('error'))<div class="alert error" role="alert"><i class="fa-solid fa-circle-exclamation"></i> {{ session('error') }} <button type="button" class="btn btn-ghost btn-sm" onclick="window.location.reload()" style="margin-left:8px">Coba lagi</button></div>@endif

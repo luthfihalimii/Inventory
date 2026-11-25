@@ -1,0 +1,3 @@
+<?php if(session('success')): ?><div class="alert" role="status"><i class="fa-solid fa-circle-check"></i> <?php echo e(session('success')); ?></div><?php endif; ?>
+<?php if(session('error')): ?><div class="alert error" role="alert"><i class="fa-solid fa-circle-exclamation"></i> <?php echo e(session('error')); ?> <button type="button" class="btn btn-ghost btn-sm" onclick="window.location.reload()" style="margin-left:8px">Coba lagi</button></div><?php endif; ?>
+<?php /**PATH C:\wamp64\www\inventarisENT\resources\views/partials/flash.blade.php ENDPATH**/ ?>
